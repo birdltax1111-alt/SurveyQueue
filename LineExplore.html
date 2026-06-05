@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>คิวสำรวจที่ดิน — LINE Import</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --green: #00c853;
+            --green-dim: #00963e;
+            --green-glow: rgba(0,200,83,0.18);
+            --amber: #ffb300;
+            --red: #ff4545;
+            --blue: #4285f4;
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1c2333;
+            --border: rgba(255,255,255,0.07);
+            --text: #e6edf3;
+            --text-dim: #8b949e;
+            --text-faint: #3d444d;
+            --font: 'Sarabun', sans-serif;
+            --mono: 'IBM Plex Mono', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 15px;
+            min-height: 100vh;
+        }
+
+        /* Scanline overlay */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.03) 2px,
+                rgba(0,0,0,0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 28px 0;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .logo {
+            padding: 0 24px 28px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-mark {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .logo-icon {
+            width: 36px; height: 36px;
+            background: var(--green);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            color: #000;
+            font-weight: 700;
+            box-shadow: 0 0 18px var(--green-glow);
+        }
+
+        .logo-text {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .logo-sub {
+            font-size: 11px;
+            color: var(--text-dim);
+            font-family: var(--mono);
+            margin-top: 2px;
+        }
+
+        .nav {
+            padding: 20px 12px;
+            flex: 1;
+        }
+
+        .nav-label {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--text-faint);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 0 12px;
+            margin-bottom: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-dim);
+            font-size: 14px;
+            transition: all 0.15s;
+            margin-bottom: 2px;
+        }
+
+        .nav-item:hover { background: var(--surface2); color: var(--text); }
+        .nav-item.active { background: var(--green-glow); color: var(--green); font-weight: 600; }
+        .nav-item i { width: 16px; text-align: center; font-size: 13px; }
+
+        .sidebar-stats {
+            margin: 0 16px 12px;
+            padding: 16px;
+            background: var(--surface2);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .sidebar-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        .sidebar-stat:not(:last-child) { border-bottom: 1px solid var(--border); }
+        .sidebar-stat-val { font-family: var(--mono); font-size: 16px; font-weight: 500; }
+        .val-total { color: var(--text); }
+        .val-pending { color: var(--amber); }
+        .val-done { color: var(--green); }
+
+        /* MAIN */
+        .main {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .topbar {
+            padding: 20px 32px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: var(--surface);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .search-wrap {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-wrap i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-faint);
+            font-size: 13px;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px 10px 38px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: var(--font);
+            outline: none;
+            transition: border 0.15s;
+        }
+
+        .search-input:focus { border-color: var(--green); }
+        .search-input::placeholder { color: var(--text-faint); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: var(--font);
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--green);
+            color: #000;
+            box-shadow: 0 0 20px var(--green-glow);
+        }
+
+        .btn-primary:hover { background: #00e676; transform: translateY(-1px); }
+
+        .btn-ghost {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover { background: var(--border); }
+
+        /* Drop Zone */
+        .content { padding: 28px 32px; flex: 1; }
+
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 14px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 28px;
+            background: var(--surface);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at center, var(--green-glow) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--green);
+        }
+
+        .drop-zone:hover::after, .drop-zone.dragover::after { opacity: 1; }
+
+        .drop-icon {
+            width: 56px; height: 56px;
+            background: var(--surface2);
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px;
+            color: var(--green);
+            margin: 0 auto 16px;
+            border: 1px solid var(--border);
+            position: relative; z-index: 1;
+        }
+
+        .drop-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            position: relative; z-index: 1;
+        }
+
+        .drop-sub {
+            font-size: 13px;
+            color: var(--text-dim);
+            position: relative; z-index: 1;
+        }
+
+        .drop-hint {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--text-dim);
+            font-family: var(--mono);
+            position: relative; z-index: 1;
+        }
+
+        /* Filter Chips */
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-family: var(--mono);
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-dim);
+            transition: all 0.15s;
+        }
+
+        .chip:hover { border-color: var(--text-dim); color: var(--text); }
+        .chip.active { background: var(--green-glow); border-color: var(--green); color: var(--green); }
+
+        /* Table */
+        .table-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .table-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dim);
+            font-family: var(--mono);
+            letter-spacing: 0.5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            padding: 11px 20px;
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--text-faint);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+            text-align: left;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.1s;
+        }
+
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+        td {
+            padding: 14px 20px;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        .td-time {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+        .td-sender {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .td-detail {
+            color: var(--text-dim);
+            font-size: 13px;
+            max-width: 280px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-family: var(--mono);
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-pending {
+            background: rgba(255,179,0,0.12);
+            color: var(--amber);
+            border: 1px solid rgba(255,179,0,0.25);
+        }
+
+        .badge-done {
+            background: rgba(0,200,83,0.12);
+            color: var(--green);
+            border: 1px solid rgba(0,200,83,0.25);
+        }
+
+        .badge::before {
+            content: '';
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .btn-map {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(66,133,244,0.12);
+            color: #4da3ff;
+            border: 1px solid rgba(66,133,244,0.25);
+            padding: 6px 12px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 12px;
+            font-family: var(--mono);
+            font-weight: 500;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .btn-map:hover {
+            background: rgba(66,133,244,0.22);
+            transform: translateY(-1px);
+        }
+
+        .action-group { display: flex; gap: 6px; }
+
+        .icon-btn {
+            width: 30px; height: 30px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: none;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.15s;
+        }
+
+        .icon-btn-check { color: var(--green); }
+        .icon-btn-check:hover { background: rgba(0,200,83,0.1); border-color: var(--green); }
+        .icon-btn-undo { color: var(--text-dim); }
+        .icon-btn-undo:hover { background: var(--surface2); }
+        .icon-btn-del { color: var(--red); }
+        .icon-btn-del:hover { background: rgba(255,69,69,0.1); border-color: var(--red); }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-faint);
+        }
+
+        .empty-state i { font-size: 32px; margin-bottom: 12px; display: block; }
+        .empty-state p { font-size: 14px; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-family: var(--mono);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            transition: transform 0.3s ease;
+            z-index: 9998;
+            white-space: nowrap;
+        }
+
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.success { border-color: var(--green); color: var(--green); }
+        .toast.error { border-color: var(--red); color: var(--red); }
+
+        /* Row number */
+        .row-num {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--text-faint);
+        }
+
+        @media (max-width: 900px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .topbar { padding: 14px 16px; }
+            .content { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="logo">
+            <div class="logo-mark">
+                <div class="logo-icon"><i class="fab fa-line"></i></div>
+                <div>
+                    <div class="logo-text">Survey Queue</div>
+                    <div class="logo-sub">v2.0 — Land Office</div>
+                </div>
+            </div>
+        </div>
+
+        <nav class="nav">
+            <div class="nav-label">เมนูหลัก</div>
+            <div class="nav-item active"><i class="fas fa-table-list"></i> คิวสำรวจทั้งหมด</div>
+            <div class="nav-item" onclick="filterByStatus('pending')"><i class="fas fa-clock"></i> รอดำเนินการ</div>
+            <div class="nav-item" onclick="filterByStatus('done')"><i class="fas fa-circle-check"></i> สำรวจแล้ว</div>
+            <div class="nav-item" onclick="filterByStatus('all')"><i class="fas fa-layer-group"></i> แสดงทั้งหมด</div>
+        </nav>
+
+        <div class="sidebar-stats">
+            <div class="nav-label" style="padding:0;margin-bottom:10px;">สถิติปัจจุบัน</div>
+            <div class="sidebar-stat">
+                <span>ทั้งหมด</span>
+                <span class="sidebar-stat-val val-total" id="s-total">0</span>
+            </div>
+            <div class="sidebar-stat">
+                <span>รอดำเนินการ</span>
+                <span class="sidebar-stat-val val-pending" id="s-pending">0</span>
+            </div>
+            <div class="sidebar-stat">
+                <span>เสร็จแล้ว</span>
+                <span class="sidebar-stat-val val-done" id="s-done">0</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+        <div class="topbar">
+            <div class="search-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" id="search-box" class="search-input" placeholder="ค้นหาชื่อ, บ้านเลขที่, ซอย...">
+            </div>
+            <button class="btn btn-ghost" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
+            <button class="btn btn-ghost btn-danger-ghost" onclick="clearAll()"><i class="fas fa-trash"></i> ล้างข้อมูล</button>
+        </div>
+
+        <div class="content">
+            <!-- Drop Zone -->
+            <div class="drop-zone" id="drop-zone">
+                <div class="drop-icon"><i class="fab fa-line"></i></div>
+                <div class="drop-title">นำเข้าไฟล์แชท LINE</div>
+                <div class="drop-sub">ลากไฟล์ .txt มาวาง หรือคลิกเพื่อเลือก</div>
+                <div class="drop-hint"><i class="fas fa-info-circle"></i> รองรับไฟล์ส่งออกแชทจาก LINE เท่านั้น (.txt)</div>
+                <input type="file" id="file-input" accept=".txt" style="display:none">
+            </div>
+
+            <!-- Filter Row -->
+            <div class="filter-row">
+                <div class="chip active" id="chip-all" onclick="setChip('all')">ทั้งหมด</div>
+                <div class="chip" id="chip-pending" onclick="setChip('pending')">⏳ รอดำเนินการ</div>
+                <div class="chip" id="chip-done" onclick="setChip('done')">✅ สำรวจแล้ว</div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-wrap">
+                <div class="table-header">
+                    <div class="table-title">SURVEY_QUEUE</div>
+                    <div style="font-size:12px; color:var(--text-dim);" id="row-count">0 รายการ</div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>เวลา</th>
+                            <th>ผู้ส่ง LINE</th>
+                            <th>รายละเอียด</th>
+                            <th>แผนที่</th>
+                            <th>สถานะ</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-rows">
+                        <tr>
+                            <td colspan="7">
+                                <div class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>ยังไม่มีข้อมูล — นำเข้าไฟล์แชท LINE เพื่อเริ่มต้น</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let surveyQueue = [];
+let activeFilter = 'all';
+
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const dataRows = document.getElementById('data-rows');
+const searchBox = document.getElementById('search-box');
+const toast = document.getElementById('toast');
+
+// Load from localStorage
+try {
+    const saved = localStorage.getItem('surveyQueue_v2');
+    if (saved) { surveyQueue = JSON.parse(saved); updateTable(); }
+} catch(e) {}
+
+// Events
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+});
+searchBox.addEventListener('input', updateTable);
+
+function setChip(val) {
+    activeFilter = val;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    document.getElementById('chip-' + val).classList.add('active');
+    updateTable();
+}
+
+function filterByStatus(val) {
+    setChip(val === 'all' ? 'all' : val);
+}
+
+function showToast(msg, type = '') {
+    toast.textContent = msg;
+    toast.className = 'toast show ' + type;
+    setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+function handleFile(file) {
+    if (!file || (!file.type.includes('text') && !file.name.endsWith('.txt'))) {
+        showToast('กรุณาเลือกไฟล์ .txt เท่านั้น', 'error');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => parseLineChat(e.target.result);
+    reader.readAsText(file, 'UTF-8');
+}
+
+function parseLineChat(text) {
+    const lines = text.split('\n');
+    let tempQueue = [];
+    let currentRecord = null;
+
+    const lineMsgRegex = /^(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)\s+(.+?)\s{2,}(.*)$/;
+    const lineMsgRegex2 = /^(\d{1,2}:\d{2})\s+([^\t]+)\t(.*)$/;
+    const mapRegex = /(https?:\/\/(?:googleusercontent\.com\/maps\.google\.com|goo\.gl\/maps|maps\.google\.com|maps\.app\.goo\.gl)[^\s]+)/i;
+
+    lines.forEach(line => {
+        line = line.trim();
+        if (!line) return;
+        if (/เข้าร่วม|ออกจากกลุ่ม|เปลี่ยนชื่อ|ยกเลิกข้อความ|สติกเกอร์|\[Photo\]|\[Video\]|\[File\]/.test(line)) return;
+
+        let match = line.match(lineMsgRegex2) || line.match(lineMsgRegex);
+        if (match) {
+            const time = match[1];
+            const sender = match[2].trim();
+            const message = match[3].trim();
+
+            const mapMatch = message.match(mapRegex);
+
+            if (mapMatch) {
+                currentRecord = {
+                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
+                    time, sender,
+                    details: message.replace(mapRegex, '').replace(/[:,\s]+$/, '').trim(),
+                    mapUrl: mapMatch[1],
+                    status: 'pending'
+                };
+                tempQueue.push(currentRecord);
+            } else if (currentRecord && sender === currentRecord.sender) {
+                if (message) currentRecord.details += (currentRecord.details ? ' ' : '') + message;
+            } else if (currentRecord && /ม\.|ซอย|บ้านเลขที่|หมู่|ถนน/.test(message)) {
+                currentRecord.details += ' | ' + sender + ': ' + message;
+            }
+
+            // Auto-close status
+            if (/สำรวจแล้ว|เรียบร้อยแล้ว|ดำเนินการแล้ว/.test(message)) {
+                const tag = message.replace(/^@/, '').split(/\s/)[0];
+                const found = tempQueue.find(q => q.sender === tag || tag.includes(q.sender));
+                if (found) found.status = 'done';
+            }
+        }
+    });
+
+    if (tempQueue.length === 0) {
+        showToast('ไม่พบพิกัดแผนที่ในไฟล์นี้', 'error');
+        return;
+    }
+
+    surveyQueue = [...surveyQueue, ...tempQueue];
+    const uniqueMap = new Map();
+    surveyQueue.forEach(item => uniqueMap.set(item.mapUrl, item));
+    surveyQueue = Array.from(uniqueMap.values());
+
+    saveData();
+    updateTable();
+    showToast(`นำเข้าสำเร็จ — พบ ${tempQueue.length} พิกัด`, 'success');
+}
+
+function updateTable() {
+    const term = searchBox.value.toLowerCase();
+    dataRows.innerHTML = '';
+
+    let total = 0, pending = 0, done = 0;
+    surveyQueue.forEach(i => { total++; i.status === 'done' ? done++ : pending++; });
+    document.getElementById('s-total').textContent = total;
+    document.getElementById('s-pending').textContent = pending;
+    document.getElementById('s-done').textContent = done;
+
+    const filtered = surveyQueue.filter(item => {
+        const matchSearch = !term ||
+            item.sender.toLowerCase().includes(term) ||
+            item.details.toLowerCase().includes(term) ||
+            item.time.includes(term);
+        const matchStatus = activeFilter === 'all' || item.status === activeFilter;
+        return matchSearch && matchStatus;
+    });
+
+    document.getElementById('row-count').textContent = `${filtered.length} รายการ`;
+
+    if (filtered.length === 0) {
+        dataRows.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-search"></i><p>ไม่พบรายการที่ตรงกัน</p></div></td></tr>`;
+        return;
+    }
+
+    filtered.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="row-num">${String(idx + 1).padStart(2, '0')}</td>
+            <td class="td-time">${item.time}</td>
+            <td class="td-sender">${escHtml(item.sender)}</td>
+            <td class="td-detail">${item.details ? escHtml(item.details) : '<span style="color:var(--text-faint)">ไม่ได้ระบุ</span>'}</td>
+            <td><a href="${item.mapUrl}" target="_blank" class="btn-map"><i class="fas fa-map-marker-alt"></i> แผนที่</a></td>
+            <td>
+                <span class="badge ${item.status === 'done' ? 'badge-done' : 'badge-pending'}">
+                    ${item.status === 'done' ? 'สำรวจแล้ว' : 'รอดำเนินการ'}
+                </span>
+            </td>
+            <td>
+                <div class="action-group">
+                    <button class="icon-btn ${item.status === 'done' ? 'icon-btn-undo' : 'icon-btn-check'}" onclick="toggleStatus('${item.id}')" title="${item.status === 'done' ? 'ย้อนสถานะ' : 'ทำเครื่องหมายว่าสำรวจแล้ว'}">
+                        <i class="fas ${item.status === 'done' ? 'fa-rotate-left' : 'fa-check'}"></i>
+                    </button>
+                    <button class="icon-btn icon-btn-del" onclick="deleteRecord('${item.id}')" title="ลบรายการ">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+        dataRows.appendChild(tr);
+    });
+}
+
+function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toggleStatus(id) {
+    const item = surveyQueue.find(i => i.id === id);
+    if (item) {
+        item.status = item.status === 'done' ? 'pending' : 'done';
+        saveData();
+        updateTable();
+    }
+}
+
+function deleteRecord(id) {
+    if (confirm('ลบรายการนี้ออกจากคิวใช่หรือไม่?')) {
+        surveyQueue = surveyQueue.filter(i => i.id !== id);
+        saveData();
+        updateTable();
+        showToast('ลบรายการแล้ว');
+    }
+}
+
+function clearAll() {
+    if (surveyQueue.length === 0) { showToast('ไม่มีข้อมูลให้ล้าง', 'error'); return; }
+    if (confirm('ล้างข้อมูลคิวทั้งหมดใช่หรือไม่? ไม่สามารถกู้คืนได้')) {
+        surveyQueue = [];
+        saveData();
+        updateTable();
+        showToast('ล้างข้อมูลทั้งหมดแล้ว');
+    }
+}
+
+function exportCSV() {
+    if (surveyQueue.length === 0) { showToast('ไม่มีข้อมูลให้ Export', 'error'); return; }
+    const header = ['เวลา', 'ผู้ส่ง', 'รายละเอียด', 'URL แผนที่', 'สถานะ'];
+    const rows = surveyQueue.map(i => [
+        i.time, i.sender, i.details, i.mapUrl,
+        i.status === 'done' ? 'สำรวจแล้ว' : 'รอดำเนินการ'
+    ].map(v => `"${(v||'').replace(/"/g,'""')}"`));
+    const csv = '\uFEFF' + [header, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'survey_queue_' + new Date().toLocaleDateString('th-TH').replace(/\//g,'-') + '.csv';
+    a.click();
+    showToast('Export CSV สำเร็จ', 'success');
+}
+
+function saveData() {
+    try { localStorage.setItem('surveyQueue_v2', JSON.stringify(surveyQueue)); } catch(e) {}
+}
+</script>
+</body>
+</html>
