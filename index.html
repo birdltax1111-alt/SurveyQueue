@@ -1,858 +1,2395 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" class="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>คิวสำรวจที่ดิน — LINE Import</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --green: #00c853;
-            --green-dim: #00963e;
-            --green-glow: rgba(0,200,83,0.18);
-            --amber: #ffb300;
-            --red: #ff4545;
-            --blue: #4285f4;
-            --bg: #0d1117;
-            --surface: #161b22;
-            --surface2: #1c2333;
-            --border: rgba(255,255,255,0.07);
-            --text: #e6edf3;
-            --text-dim: #8b949e;
-            --text-faint: #3d444d;
-            --font: 'Sarabun', sans-serif;
-            --mono: 'IBM Plex Mono', monospace;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: var(--font);
-            font-size: 15px;
-            min-height: 100vh;
-        }
-
-        /* Scanline overlay */
-        body::before {
-            content: '';
-            position: fixed; inset: 0;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0,0,0,0.03) 2px,
-                rgba(0,0,0,0.03) 4px
-            );
-            pointer-events: none;
-            z-index: 9999;
-        }
-
-        .layout {
-            display: grid;
-            grid-template-columns: 240px 1fr;
-            min-height: 100vh;
-        }
-
-        /* SIDEBAR */
-        .sidebar {
-            background: var(--surface);
-            border-right: 1px solid var(--border);
-            padding: 28px 0;
-            display: flex;
-            flex-direction: column;
-            position: sticky;
-            top: 0;
-            height: 100vh;
-        }
-
-        .logo {
-            padding: 0 24px 28px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .logo-mark {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 6px;
-        }
-
-        .logo-icon {
-            width: 36px; height: 36px;
-            background: var(--green);
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 18px;
-            color: #000;
-            font-weight: 700;
-            box-shadow: 0 0 18px var(--green-glow);
-        }
-
-        .logo-text {
-            font-size: 15px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        .logo-sub {
-            font-size: 11px;
-            color: var(--text-dim);
-            font-family: var(--mono);
-            margin-top: 2px;
-        }
-
-        .nav {
-            padding: 20px 12px;
-            flex: 1;
-        }
-
-        .nav-label {
-            font-size: 10px;
-            font-family: var(--mono);
-            color: var(--text-faint);
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            padding: 0 12px;
-            margin-bottom: 8px;
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 9px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            color: var(--text-dim);
-            font-size: 14px;
-            transition: all 0.15s;
-            margin-bottom: 2px;
-        }
-
-        .nav-item:hover { background: var(--surface2); color: var(--text); }
-        .nav-item.active { background: var(--green-glow); color: var(--green); font-weight: 600; }
-        .nav-item i { width: 16px; text-align: center; font-size: 13px; }
-
-        .sidebar-stats {
-            margin: 0 16px 12px;
-            padding: 16px;
-            background: var(--surface2);
-            border-radius: 10px;
-            border: 1px solid var(--border);
-        }
-
-        .sidebar-stat {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 0;
-            font-size: 13px;
-            color: var(--text-dim);
-        }
-
-        .sidebar-stat:not(:last-child) { border-bottom: 1px solid var(--border); }
-        .sidebar-stat-val { font-family: var(--mono); font-size: 16px; font-weight: 500; }
-        .val-total { color: var(--text); }
-        .val-pending { color: var(--amber); }
-        .val-done { color: var(--green); }
-
-        /* MAIN */
-        .main {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        .topbar {
-            padding: 20px 32px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            background: var(--surface);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .search-wrap {
-            flex: 1;
-            position: relative;
-        }
-
-        .search-wrap i {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-faint);
-            font-size: 13px;
-        }
-
-        .search-input {
-            width: 100%;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 10px 14px 10px 38px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: var(--font);
-            outline: none;
-            transition: border 0.15s;
-        }
-
-        .search-input:focus { border-color: var(--green); }
-        .search-input::placeholder { color: var(--text-faint); }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 18px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: var(--font);
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            transition: all 0.15s;
-            white-space: nowrap;
-        }
-
-        .btn-primary {
-            background: var(--green);
-            color: #000;
-            box-shadow: 0 0 20px var(--green-glow);
-        }
-
-        .btn-primary:hover { background: #00e676; transform: translateY(-1px); }
-
-        .btn-ghost {
-            background: var(--surface2);
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-
-        .btn-ghost:hover { background: var(--border); }
-
-        /* Drop Zone */
-        .content { padding: 28px 32px; flex: 1; }
-
-        .drop-zone {
-            border: 2px dashed var(--border);
-            border-radius: 14px;
-            padding: 40px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-bottom: 28px;
-            background: var(--surface);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .drop-zone::after {
-            content: '';
-            position: absolute; inset: 0;
-            background: radial-gradient(ellipse at center, var(--green-glow) 0%, transparent 70%);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .drop-zone:hover, .drop-zone.dragover {
-            border-color: var(--green);
-        }
-
-        .drop-zone:hover::after, .drop-zone.dragover::after { opacity: 1; }
-
-        .drop-icon {
-            width: 56px; height: 56px;
-            background: var(--surface2);
-            border-radius: 14px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 22px;
-            color: var(--green);
-            margin: 0 auto 16px;
-            border: 1px solid var(--border);
-            position: relative; z-index: 1;
-        }
-
-        .drop-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            position: relative; z-index: 1;
-        }
-
-        .drop-sub {
-            font-size: 13px;
-            color: var(--text-dim);
-            position: relative; z-index: 1;
-        }
-
-        .drop-hint {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 14px;
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            color: var(--text-dim);
-            font-family: var(--mono);
-            position: relative; z-index: 1;
-        }
-
-        /* Filter Chips */
-        .filter-row {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .chip {
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-family: var(--mono);
-            cursor: pointer;
-            border: 1px solid var(--border);
-            background: var(--surface);
-            color: var(--text-dim);
-            transition: all 0.15s;
-        }
-
-        .chip:hover { border-color: var(--text-dim); color: var(--text); }
-        .chip.active { background: var(--green-glow); border-color: var(--green); color: var(--green); }
-
-        /* Table */
-        .table-wrap {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .table-header {
-            padding: 14px 20px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .table-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-dim);
-            font-family: var(--mono);
-            letter-spacing: 0.5px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead th {
-            padding: 11px 20px;
-            font-size: 11px;
-            font-family: var(--mono);
-            color: var(--text-faint);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 500;
-            text-align: left;
-            background: var(--surface2);
-            border-bottom: 1px solid var(--border);
-            white-space: nowrap;
-        }
-
-        tbody tr {
-            border-bottom: 1px solid var(--border);
-            transition: background 0.1s;
-        }
-
-        tbody tr:last-child { border-bottom: none; }
-        tbody tr:hover { background: rgba(255,255,255,0.02); }
-
-        td {
-            padding: 14px 20px;
-            font-size: 14px;
-            vertical-align: middle;
-        }
-
-        .td-time {
-            font-family: var(--mono);
-            font-size: 12px;
-            color: var(--text-dim);
-            white-space: nowrap;
-        }
-
-        .td-sender {
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        .td-detail {
-            color: var(--text-dim);
-            font-size: 13px;
-            max-width: 280px;
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-family: var(--mono);
-            font-weight: 600;
-            letter-spacing: 0.3px;
-        }
-
-        .badge-pending {
-            background: rgba(255,179,0,0.12);
-            color: var(--amber);
-            border: 1px solid rgba(255,179,0,0.25);
-        }
-
-        .badge-done {
-            background: rgba(0,200,83,0.12);
-            color: var(--green);
-            border: 1px solid rgba(0,200,83,0.25);
-        }
-
-        .badge::before {
-            content: '';
-            width: 5px; height: 5px;
-            border-radius: 50%;
-            background: currentColor;
-        }
-
-        .btn-map {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(66,133,244,0.12);
-            color: #4da3ff;
-            border: 1px solid rgba(66,133,244,0.25);
-            padding: 6px 12px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 12px;
-            font-family: var(--mono);
-            font-weight: 500;
-            transition: all 0.15s;
-            white-space: nowrap;
-        }
-
-        .btn-map:hover {
-            background: rgba(66,133,244,0.22);
-            transform: translateY(-1px);
-        }
-
-        .action-group { display: flex; gap: 6px; }
-
-        .icon-btn {
-            width: 30px; height: 30px;
-            display: inline-flex; align-items: center; justify-content: center;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background: none;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.15s;
-        }
-
-        .icon-btn-check { color: var(--green); }
-        .icon-btn-check:hover { background: rgba(0,200,83,0.1); border-color: var(--green); }
-        .icon-btn-undo { color: var(--text-dim); }
-        .icon-btn-undo:hover { background: var(--surface2); }
-        .icon-btn-del { color: var(--red); }
-        .icon-btn-del:hover { background: rgba(255,69,69,0.1); border-color: var(--red); }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-faint);
-        }
-
-        .empty-state i { font-size: 32px; margin-bottom: 12px; display: block; }
-        .empty-state p { font-size: 14px; }
-
-        /* Toast */
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%) translateY(80px);
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-family: var(--mono);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-            transition: transform 0.3s ease;
-            z-index: 9998;
-            white-space: nowrap;
-        }
-
-        .toast.show { transform: translateX(-50%) translateY(0); }
-        .toast.success { border-color: var(--green); color: var(--green); }
-        .toast.error { border-color: var(--red); color: var(--red); }
-
-        /* Row number */
-        .row-num {
-            font-family: var(--mono);
-            font-size: 11px;
-            color: var(--text-faint);
-        }
-
-        @media (max-width: 900px) {
-            .layout { grid-template-columns: 1fr; }
-            .sidebar { display: none; }
-            .topbar { padding: 14px 16px; }
-            .content { padding: 16px; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LineExplore — ระบบบริหารคิวสำรวจภาคสนามระดับมืออาชีพ</title>
+<!-- Tailwind CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: {
+        display: ['Sarabun', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      colors: {
+        brand: { 50:'#f0fdf4',100:'#dcfce7',200:'#bbf7d0',300:'#86efac',400:'#4ade80',500:'#22c55e',600:'#16a34a',700:'#15803d',800:'#166534',900:'#14532d' },
+        amber: { 50:'#fffbeb',100:'#fef3c7',200:'#fde68a',300:'#fcd34d',400:'#fbbf24',500:'#f59e0b',600:'#d97706',700:'#b45309',800:'#92400e',900:'#78350f' },
+        rose: { 50:'#fff1f2',100:'#ffe4e6',200:'#fecdd3',300:'#fda4af',400:'#fb7185',500:'#f43f5e',600:'#e11d48',700:'#be123c',800:'#9f1239',900:'#881337' },
+      }
+    }
+  }
+}
+</script>
+<!-- Fonts & Leaflet -->
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/proj4@2.11.0/dist/proj4.js"></script>
+
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface2: #f1f5f9;
+    --border: #e2e8f0;
+    --text: #0f172a;
+    --text2: #475569;
+    --text3: #94a3b8;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,.07), 0 2px 4px -1px rgba(0,0,0,.05);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.08), 0 4px 6px -2px rgba(0,0,0,.04);
+  }
+  .dark {
+    --bg: #0b0f17;
+    --surface: #121824;
+    --surface2: #1e293b;
+    --border: #334155;
+    --text: #f8fafc;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --shadow: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,.25), 0 2px 4px -1px rgba(0,0,0,.15);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.3), 0 4px 6px -2px rgba(0,0,0,.15);
+  }
+  * { font-family: 'Sarabun', sans-serif; }
+  body { background: var(--bg); color: var(--text); transition: background .2s, color .2s; }
+  .card { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .card-hover:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); transition: all .15s; }
+  .surface2 { background: var(--surface2); }
+  .border-c { border-color: var(--border); }
+  .text-c { color: var(--text); }
+  .text-c2 { color: var(--text2); }
+  .text-c3 { color: var(--text3); }
+
+  /* Drag drop zone */
+  .drop-zone { border: 2px dashed var(--border); transition: all .2s; }
+  .drop-zone.dragging { border-color: #22c55e; background: rgba(34,197,94,.06); }
+
+  /* Status badges */
+  .badge-pending { background:#fee2e2; color:#dc2626; border: 1px solid #fca5a5; }
+  .dark .badge-pending { background:rgba(220,38,38,.2); color:#fca5a5; border: 1px solid rgba(220,38,38,0.4); }
+  .badge-processing { background:#fef3c7; color:#d97706; border: 1px solid #fcd34d; }
+  .dark .badge-processing { background:rgba(217,119,6,.2); color:#fcd34d; border: 1px solid rgba(217,119,6,0.4); }
+  .badge-completed { background:#dcfce7; color:#16a34a; border: 1px solid #86efac; }
+  .dark .badge-completed { background:rgba(22,163,74,.2); color:#4ade80; border: 1px solid rgba(22,163,74,0.4); }
+
+  /* Progress bar */
+  .progress-track { background: var(--surface2); border-radius: 999px; overflow:hidden; }
+  .progress-fill { background: linear-gradient(90deg,#22c55e,#16a34a); border-radius:999px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Animations */
+  @keyframes slideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  @keyframes pulse-dot { 0%,100%{opacity:1; transform:scale(1);} 50%{opacity:.4; transform:scale(1.1);} }
+  .animate-slide { animation: slideIn .25s ease both; }
+  .animate-fade { animation: fadeIn .2s ease both; }
+  .pulse-dot { animation: pulse-dot 1.5s ease infinite; }
+
+  /* Toast */
+  #toast { position:fixed; bottom:5rem; right:1.5rem; z-index:9999; display:flex; flex-direction:column; gap:.5rem; pointer-events:none; }
+  .toast-item { background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow-lg); padding:.75rem 1.25rem; border-radius:.75rem; font-size:.875rem; color:var(--text); animation: slideIn .2s ease both; pointer-events:all; display:flex; align-items:center; gap:.5rem; min-width:260px; max-width:360px; }
+
+  /* Modal */
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:1000; display:flex; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(3px); }
+  .modal-box { background:var(--surface); border:1px solid var(--border); border-radius:1rem; max-width:540px; width:100%; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-lg); }
+
+  /* Highlight search */
+  mark { background:rgba(251,191,36,.35); color:inherit; border-radius:2px; padding:0 2px; }
+
+  /* Tab active styling */
+  .tab-active { color: #22c55e; border-color: #22c55e; font-weight: bold; }
+  
+  /* Inputs */
+  input.fi, select.fi, textarea.fi {
+    background:var(--surface2); border:1px solid var(--border); color:var(--text);
+    border-radius:.5rem; padding:.65rem .75rem; width:100%; font-size:1rem;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input.fi:focus, select.fi:focus, textarea.fi:focus {
+    outline:none; border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.15);
+  }
+
+  /* Buttons */
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:.4rem; padding:.75rem 1.25rem; border-radius:.75rem; font-size:.95rem; font-weight:600; cursor:pointer; transition: all .15s; border:none; min-height:44px; min-width:44px; }
+  .btn:active { transform:scale(.95); }
+  .btn-primary { background:#22c55e; color:#fff; }
+  .btn-primary:hover { background:#16a34a; }
+  .btn-ghost { background:transparent; color:var(--text2); border:1px solid var(--border); }
+  .btn-ghost:hover { background:var(--surface2); color:var(--text); }
+  .btn-danger { background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; }
+  .dark .btn-danger { background:rgba(220,38,38,.2); color:#fca5a5; border:1px solid rgba(220,38,38,0.3); }
+  .btn-danger:hover { background:#fecaca; }
+
+  /* Card status border */
+  .card-pending { border-left: 5px solid #ef4444; }
+  .card-processing { border-left: 5px solid #f59e0b; }
+  .card-completed { border-left: 5px solid #22c55e; }
+
+  /* Map sizing */
+  #map { height: calc(100vh - 170px); width: 100%; border-radius: 1rem; border: 1px solid var(--border); }
+  @media (max-width: 640px) {
+    #map { height: calc(100vh - 210px); }
+  }
+</style>
 </head>
-<body>
+<body class="min-h-screen pb-24">
 
-<div class="layout">
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-        <div class="logo">
-            <div class="logo-mark">
-                <div class="logo-icon"><i class="fab fa-line"></i></div>
-                <div>
-                    <div class="logo-text">Survey Queue</div>
-                    <div class="logo-sub">v2.0 — Land Office</div>
-                </div>
-            </div>
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Modals -->
+<div id="modal-container"></div>
+
+<!-- Header -->
+<header class="sticky top-0 z-50 card border-b border-c shadow-sm" style="border-radius:0;">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center flex-shrink-0 shadow-md">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <div>
+        <div class="font-bold text-base leading-tight text-c flex items-center gap-1.5">
+          LineExplore 
+          <span id="connection-badge" class="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-emerald-500 text-white flex items-center gap-1">
+            <span class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></span> ออนไลน์
+          </span>
+        </div>
+        <div class="text-xs text-c3 font-mono">ระบบจัดการและติดตามคิวสำรวจภาคสนาม</div>
+      </div>
+    </div>
+
+    <!-- Active GPS Display in Header -->
+    <div id="header-gps-status" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-600 dark:text-emerald-400 font-mono">
+      <div class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse flex-shrink-0"></div>
+      <span id="header-gps-text">GPS: กำลังค้นหา...</span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button onclick="toggleDark()" id="dark-btn" class="btn btn-ghost p-2 rounded-lg" style="min-height:38px; min-width:38px; padding:0.5rem">
+        <svg id="dark-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Main Container -->
+<main class="max-w-7xl mx-auto px-3 py-4">
+
+  <!-- ================= TAB: DASHBOARD ================= -->
+  <section id="content-dashboard" class="space-y-4 hidden">
+    <!-- GPS HUD for Mobile -->
+    <div class="card rounded-2xl p-4 space-y-3 bg-gradient-to-br from-brand-50 to-white dark:from-slate-900 dark:to-slate-950 border border-brand-100 dark:border-brand-900/50">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base text-c flex items-center gap-1.5">
+          📡 ระบบ GPS ปัจจุบันของผู้สำรวจ
+        </h3>
+        <span id="gps-hud-badge" class="text-xs px-2 py-0.5 rounded-full font-bold bg-rose-500 text-white">ปิดใช้งาน</span>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm font-mono">
+        <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-c">
+          <span class="text-xs text-c3">ละติจูด (Latitude)</span>
+          <div id="gps-hud-lat" class="font-bold text-c mt-0.5">—</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-c">
+          <span class="text-xs text-c3">ลองจิจูด (Longitude)</span>
+          <div id="gps-hud-lng" class="font-bold text-c mt-0.5">—</div>
+        </div>
+        <div class="col-span-2 md:col-span-1 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-c">
+          <span class="text-xs text-c3">ความแม่นยำ (Accuracy)</span>
+          <div id="gps-hud-acc" class="font-bold text-c mt-0.5 text-rose-500">—</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <input type="text" id="surveyor-name-input" class="fi max-w-[200px]" placeholder="ชื่อผู้สำรวจ" oninput="updateSurveyorName(this.value)">
+        <span class="text-xs text-c2">ชื่อผู้บันทึกข้อมูลขณะสำรวจสำเร็จ</span>
+      </div>
+    </div>
+
+    <!-- Dashboard counters -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" id="dashboard-counters">
+      <!-- Generated by JS -->
+    </div>
+
+    <!-- Success progress bar -->
+    <div class="card rounded-2xl p-5 space-y-3" id="success-progress-card">
+      <!-- Generated by JS -->
+    </div>
+  </section>
+
+  <!-- ================= TAB: QUEUE LIST ================= -->
+  <section id="content-queue" class="space-y-4">
+    <!-- Toolbar -->
+    <div class="card rounded-2xl p-4 space-y-3">
+      <!-- Search input -->
+      <div class="relative">
+        <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 text-c3" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search-input" class="fi pl-10" type="text" placeholder="ค้นหาชื่อผู้ส่ง, บ้านเลขที่, ซอย, พิกัด..." oninput="applyFilters()">
+      </div>
+      
+      <!-- Filters Row -->
+      <div class="flex flex-wrap gap-2 items-center">
+        <!-- Status buttons -->
+        <div id="status-filters" class="flex gap-1.5 overflow-x-auto pb-1 max-w-full no-select">
+          <button onclick="setStatusFilter('all')" data-sf="all" class="btn btn-ghost text-xs py-1.5 px-3 whitespace-nowrap bg-white dark:bg-slate-900">ทั้งหมด</button>
+          <button onclick="setStatusFilter('pending')" data-sf="pending" class="btn btn-ghost text-xs py-1.5 px-3 whitespace-nowrap bg-white dark:bg-slate-900 border-rose-400">🔴 รอสำรวจ</button>
+          <button onclick="setStatusFilter('processing')" data-sf="processing" class="btn btn-ghost text-xs py-1.5 px-3 whitespace-nowrap bg-white dark:bg-slate-900 border-amber-400">🟡 กำลังสำรวจ</button>
+          <button onclick="setStatusFilter('completed')" data-sf="completed" class="btn btn-ghost text-xs py-1.5 px-3 whitespace-nowrap bg-white dark:bg-slate-900 border-brand-400">🟢 สำรวจแล้ว</button>
         </div>
 
-        <nav class="nav">
-            <div class="nav-label">เมนูหลัก</div>
-            <div class="nav-item active"><i class="fas fa-table-list"></i> คิวสำรวจทั้งหมด</div>
-            <div class="nav-item" onclick="filterByStatus('pending')"><i class="fas fa-clock"></i> รอดำเนินการ</div>
-            <div class="nav-item" onclick="filterByStatus('done')"><i class="fas fa-circle-check"></i> สำรวจแล้ว</div>
-            <div class="nav-item" onclick="filterByStatus('all')"><i class="fas fa-layer-group"></i> แสดงทั้งหมด</div>
-        </nav>
-
-        <div class="sidebar-stats">
-            <div class="nav-label" style="padding:0;margin-bottom:10px;">สถิติปัจจุบัน</div>
-            <div class="sidebar-stat">
-                <span>ทั้งหมด</span>
-                <span class="sidebar-stat-val val-total" id="s-total">0</span>
-            </div>
-            <div class="sidebar-stat">
-                <span>รอดำเนินการ</span>
-                <span class="sidebar-stat-val val-pending" id="s-pending">0</span>
-            </div>
-            <div class="sidebar-stat">
-                <span>เสร็จแล้ว</span>
-                <span class="sidebar-stat-val val-done" id="s-done">0</span>
-            </div>
+        <div class="flex flex-wrap gap-2 w-full sm:w-auto sm:ml-auto">
+          <!-- Soi filter -->
+          <select id="soi-filter" class="fi text-sm py-1.5 px-2.5 w-full sm:w-auto" onchange="applyFilters()">
+            <option value="">ซอย: ทั้งหมด</option>
+          </select>
+          <!-- Distance filter -->
+          <select id="distance-filter" class="fi text-sm py-1.5 px-2.5 w-full sm:w-auto" onchange="applyFilters()">
+            <option value="all">ระยะห่าง: ทั้งหมด</option>
+            <option value="near">🟢 ถึงจุดแล้ว (≤ 20 ม.)</option>
+            <option value="mid">🟡 ใกล้ถึง (20 - 50 ม.)</option>
+            <option value="far">🔴 ไกล (> 50 ม.)</option>
+          </select>
         </div>
-    </aside>
+      </div>
+    </div>
 
-    <!-- MAIN -->
-    <main class="main">
-        <div class="topbar">
-            <div class="search-wrap">
-                <i class="fas fa-search"></i>
-                <input type="text" id="search-box" class="search-input" placeholder="ค้นหาชื่อ, บ้านเลขที่, ซอย...">
-            </div>
-            <button class="btn btn-ghost" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
-            <button class="btn btn-ghost btn-danger-ghost" onclick="clearAll()"><i class="fas fa-trash"></i> ล้างข้อมูล</button>
+    <!-- Active List Controls & Count -->
+    <div class="flex items-center justify-between text-sm px-1 text-c2">
+      <div id="result-count" class="font-semibold"></div>
+      <button onclick="markAllVisibleDone()" class="text-brand-600 font-bold hover:underline">
+        ✓ เปลี่ยนข้อมูลที่กรองอยู่ทั้งหมดเป็น 'สำรวจแล้ว'
+      </button>
+    </div>
+
+    <!-- List container -->
+    <section id="list-section" class="space-y-3"></section>
+
+    <!-- Empty state -->
+    <div id="empty-state" class="hidden text-center py-16 space-y-4">
+      <div class="w-20 h-20 mx-auto rounded-3xl bg-brand-50 dark:bg-brand-900/10 flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <div>
+        <p class="font-bold text-lg text-c">ไม่พบข้อมูลแปลงสำรวจ</p>
+        <p class="text-sm text-c3 mt-1">กรุณานำเข้าข้อมูลจากห้องแชท LINE ในเมนูตั้งค่า</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TAB: LEAFLET MAP ================= -->
+  <section id="content-map" class="space-y-3 hidden relative">
+    <div id="map"></div>
+    <div class="absolute bottom-6 left-6 z-[1000] flex flex-col gap-2">
+      <button onclick="centerMapOnUser()" class="btn btn-primary shadow-lg p-3 rounded-full flex items-center justify-center" title="ไปยังพิกัดปัจจุบัน">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M4 12H2M22 12h-4"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- ================= TAB: DATA & SETTINGS ================= -->
+  <section id="content-settings" class="space-y-4 hidden">
+    <!-- Import File/Text -->
+    <div class="card rounded-2xl p-6 space-y-4">
+      <h3 class="font-bold text-lg text-c">📥 นำเข้าข้อมูลระบบสำรวจ (LINE Chat / CSV / Tabular Files)</h3>
+      
+      <!-- Drop zone -->
+      <div id="import-drop" class="drop-zone rounded-2xl p-8 text-center cursor-pointer bg-slate-50 dark:bg-slate-900/50 hover:bg-brand-50/10" 
+        onclick="document.getElementById('import-file-input').click()"
+        ondragover="event.preventDefault();this.classList.add('dragging')"
+        ondragleave="this.classList.remove('dragging')"
+        ondrop="handleFileDrop(event)">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center mb-3 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         </div>
+        <p class="font-semibold text-c text-base">ลากไฟล์ประวัติแชท .txt หรือไฟล์ตาราง .csv มาวางที่นี่ หรือคลิกเพื่อค้นหา</p>
+        <p class="text-xs text-c3 mt-1.5">รองรับไฟล์ LINE Chat Export (.txt) และไฟล์ตารางพิกัด (.csv, .txt แบบคั่นด้วยคอมมา/แท็บ)</p>
+        <input id="import-file-input" type="file" accept=".txt,.csv" class="hidden" onchange="handleFileSelect(event)">
+      </div>
 
-        <div class="content">
-            <!-- Drop Zone -->
-            <div class="drop-zone" id="drop-zone">
-                <div class="drop-icon"><i class="fab fa-line"></i></div>
-                <div class="drop-title">นำเข้าไฟล์แชท LINE</div>
-                <div class="drop-sub">ลากไฟล์ .txt มาวาง หรือคลิกเพื่อเลือก</div>
-                <div class="drop-hint"><i class="fas fa-info-circle"></i> รองรับไฟล์ส่งออกแชทจาก LINE เท่านั้น (.txt)</div>
-                <input type="file" id="file-input" accept=".txt" style="display:none">
-            </div>
+      <div>
+        <label class="fl block mb-1">หรือวางข้อความแชท LINE ที่คัดลอกมาโดยตรง</label>
+        <textarea id="import-text" class="fi text-sm font-mono" rows="5" placeholder="วางข้อความแชทที่คัดลอกมาจาก LINE..."></textarea>
+      </div>
 
-            <!-- Filter Row -->
-            <div class="filter-row">
-                <div class="chip active" id="chip-all" onclick="setChip('all')">ทั้งหมด</div>
-                <div class="chip" id="chip-pending" onclick="setChip('pending')">⏳ รอดำเนินการ</div>
-                <div class="chip" id="chip-done" onclick="setChip('done')">✅ สำรวจแล้ว</div>
-            </div>
+      <div class="flex gap-2 justify-end">
+        <button onclick="processImport()" class="btn btn-primary w-full sm:w-auto">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          วิเคราะห์และนำเข้า
+        </button>
+      </div>
+      <div id="import-preview" class="hidden"></div>
+    </div>
 
-            <!-- Table -->
-            <div class="table-wrap">
-                <div class="table-header">
-                    <div class="table-title">SURVEY_QUEUE</div>
-                    <div style="font-size:12px; color:var(--text-dim);" id="row-count">0 รายการ</div>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>เวลา</th>
-                            <th>ผู้ส่ง LINE</th>
-                            <th>รายละเอียด</th>
-                            <th>แผนที่</th>
-                            <th>สถานะ</th>
-                            <th>จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="data-rows">
-                        <tr>
-                            <td colspan="7">
-                                <div class="empty-state">
-                                    <i class="fas fa-inbox"></i>
-                                    <p>ยังไม่มีข้อมูล — นำเข้าไฟล์แชท LINE เพื่อเริ่มต้น</p>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </main>
-</div>
+    <!-- Data Management Operations -->
+    <div class="card rounded-2xl p-6 space-y-4">
+      <h3 class="font-bold text-lg text-c">💾 การบริหารจัดการข้อมูล (Database Manager)</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <button onclick="exportCSV()" class="btn btn-ghost py-3 text-c hover:border-emerald-500 hover:text-emerald-500">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          ส่งออกไฟล์ CSV
+        </button>
+        <button onclick="backupJSON()" class="btn btn-ghost py-3 text-c hover:border-blue-500 hover:text-blue-500">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          สำรองข้อมูล JSON
+        </button>
+        <label class="btn btn-ghost py-3 text-c hover:border-indigo-500 hover:text-indigo-500 cursor-pointer flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          กู้คืนข้อมูล JSON
+          <input type="file" accept=".json" onchange="restoreJSON(event)" class="hidden">
+        </label>
+        <button onclick="clearAllData()" class="btn btn-danger py-3">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          ลบข้อมูลทั้งหมดในระบบ
+        </button>
+      </div>
+      <div class="flex items-center gap-2 mt-2">
+        <button onclick="generateSampleData()" class="btn btn-primary py-2 px-4 text-sm bg-indigo-600 hover:bg-indigo-700">
+          ⚙️ สร้างข้อมูลจำลอง (5 แปลง รอบพิกัดของคุณ)
+        </button>
+        <p class="text-xs text-c3">ใช้จำลองระบบแผนที่และตรวจระยะทางอัตโนมัติ 20 ม. เพื่อการทดสอบ</p>
+      </div>
+    </div>
+  </section>
 
-<div class="toast" id="toast"></div>
+</main>
+
+<!-- Navigation Bottom Bar (Mobile First UI) -->
+<nav class="fixed bottom-0 left-0 right-0 z-[1000] bg-white dark:bg-slate-950 border-t border-c py-2 shadow-2xl flex items-center justify-around select-none">
+  <button onclick="switchTab('dashboard')" id="nav-btn-dashboard" class="flex flex-col items-center gap-0.5 text-c3 border-t-2 border-transparent px-3 py-1 font-medium transition-all">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span class="text-[11px]">แดชบอร์ด</span>
+  </button>
+  <button onclick="switchTab('queue')" id="nav-btn-queue" class="flex flex-col items-center gap-0.5 text-c3 border-t-2 border-transparent px-3 py-1 font-medium transition-all">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    <span class="text-[11px]">คิวสำรวจ</span>
+  </button>
+  <button onclick="switchTab('map')" id="nav-btn-map" class="flex flex-col items-center gap-0.5 text-c3 border-t-2 border-transparent px-3 py-1 font-medium transition-all">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+    <span class="text-[11px]">แผนที่</span>
+  </button>
+  <button onclick="switchTab('settings')" id="nav-btn-settings" class="flex flex-col items-center gap-0.5 text-c3 border-t-2 border-transparent px-3 py-1 font-medium transition-all">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span class="text-[11px]">ตั้งค่า</span>
+  </button>
+</nav>
 
 <script>
-let surveyQueue = [];
-let activeFilter = 'all';
+// ===================== CONFIG & STATE =====================
+const STORAGE_SURVEYOR_KEY = 'lineexplore_surveyor_v2';
+const STORAGE_DARK_KEY = 'lineexplore_dark_v2';
 
-const dropZone = document.getElementById('drop-zone');
-const fileInput = document.getElementById('file-input');
-const dataRows = document.getElementById('data-rows');
-const searchBox = document.getElementById('search-box');
-const toast = document.getElementById('toast');
+let state = {
+  records: [],
+  filtered: [],
+  renderLimit: 50,
+  statusFilter: 'all',
+  soiFilter: '',
+  distanceFilter: 'all',
+  searchQuery: '',
+  userLat: null,
+  userLng: null,
+  userAcc: null,
+  gpsEnabled: false,
+  surveyorName: localStorage.getItem(STORAGE_SURVEYOR_KEY) || 'ผู้สำรวจภาคสนาม',
+  activeTab: 'queue',
+  darkMode: localStorage.getItem(STORAGE_DARK_KEY) === '1',
+  isOnline: navigator.onLine,
+  
+  // Leaflet map vars
+  mapInstance: null,
+  mapMarkers: {},
+  userMarker: null,
+  userAccuracyCircle: null
+};
 
-// Load from localStorage
-try {
-    const saved = localStorage.getItem('surveyQueue_v2');
-    if (saved) { surveyQueue = JSON.parse(saved); updateTable(); }
-} catch(e) {}
+// ===================== DATABASE (INDEXEDDB) =====================
+const DB_NAME = 'LineExploreDB';
+const DB_VERSION = 1;
+const STORE_RECORDS = 'records';
+const STORE_PHOTOS = 'photos';
 
-// Events
-dropZone.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+let db;
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onerror = (e) => reject(e);
+    request.onsuccess = (e) => {
+      db = e.target.result;
+      resolve(db);
+    };
+    request.onupgradeneeded = (e) => {
+      const dbInstance = e.target.result;
+      if (!dbInstance.objectStoreNames.contains(STORE_RECORDS)) {
+        dbInstance.createObjectStore(STORE_RECORDS, { keyPath: 'id' });
+      }
+      if (!dbInstance.objectStoreNames.contains(STORE_PHOTOS)) {
+        dbInstance.createObjectStore(STORE_PHOTOS, { keyPath: 'id' });
+      }
+    };
+  });
+}
+
+function loadRecordsFromDB() {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_RECORDS], 'readonly');
+    const store = transaction.objectStore(STORE_RECORDS);
+    const request = store.getAll();
+    request.onsuccess = () => {
+      state.records = request.result || [];
+      resolve(state.records);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function saveRecordToDB(record) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_RECORDS], 'readwrite');
+    const store = transaction.objectStore(STORE_RECORDS);
+    const request = store.put(record);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function saveRecordsBatchToDB(records) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_RECORDS], 'readwrite');
+    const store = transaction.objectStore(STORE_RECORDS);
+    records.forEach(r => store.put(r));
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+function deleteRecordFromDB(id) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_RECORDS, STORE_PHOTOS], 'readwrite');
+    transaction.objectStore(STORE_RECORDS).delete(id);
+    transaction.objectStore(STORE_PHOTOS).delete(id);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+function clearAllDBData() {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_RECORDS, STORE_PHOTOS], 'readwrite');
+    transaction.objectStore(STORE_RECORDS).clear();
+    transaction.objectStore(STORE_PHOTOS).clear();
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+function getPhotoFromDB(id) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_PHOTOS], 'readonly');
+    const store = transaction.objectStore(STORE_PHOTOS);
+    const request = store.get(id);
+    request.onsuccess = () => resolve(request.result ? request.result.dataUrl : null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function savePhotoToDB(id, dataUrl) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_PHOTOS], 'readwrite');
+    const store = transaction.objectStore(STORE_PHOTOS);
+    const request = store.put({ id, dataUrl });
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// ===================== DARK MODE =====================
+function toggleDark() {
+  state.darkMode = !state.darkMode;
+  document.documentElement.classList.toggle('dark', state.darkMode);
+  localStorage.setItem(STORAGE_DARK_KEY, state.darkMode ? '1' : '0');
+  updateDarkIcon();
+}
+function updateDarkIcon() {
+  const icon = document.getElementById('dark-icon');
+  if (state.darkMode) {
+    icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+  } else {
+    icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+  }
+}
+
+// ===================== TABS SWITCHER =====================
+function switchTab(tabId) {
+  state.activeTab = tabId;
+  
+  // Hide all sections
+  document.getElementById('content-dashboard').classList.add('hidden');
+  document.getElementById('content-queue').classList.add('hidden');
+  document.getElementById('content-map').classList.add('hidden');
+  document.getElementById('content-settings').classList.add('hidden');
+  
+  // Remove tab-active from buttons
+  document.getElementById('nav-btn-dashboard').classList.remove('tab-active');
+  document.getElementById('nav-btn-queue').classList.remove('tab-active');
+  document.getElementById('nav-btn-map').classList.remove('tab-active');
+  document.getElementById('nav-btn-settings').classList.remove('tab-active');
+  
+  // Show target section and highlight button
+  document.getElementById('content-' + tabId).classList.remove('hidden');
+  document.getElementById('nav-btn-' + tabId).classList.add('tab-active');
+  
+  if (tabId === 'map') {
+    setTimeout(initMap, 50); // Small delay to allow element sizing calculation
+  }
+}
+
+// ===================== UUID GENERATOR =====================
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+// ===================== NETWORK / OFFLINE =====================
+window.addEventListener('online', () => {
+  state.isOnline = true;
+  updateOnlineBadge();
+  showToast('กลับมาเชื่อมต่อเครือข่ายออนไลน์แล้ว', 'success');
+  // Simulated background sync
+  showToast('ซิงค์และตรวจสอบข้อมูลในเครื่องสำเร็จ', 'info');
 });
-searchBox.addEventListener('input', updateTable);
-
-function setChip(val) {
-    activeFilter = val;
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-    document.getElementById('chip-' + val).classList.add('active');
-    updateTable();
+window.addEventListener('offline', () => {
+  state.isOnline = false;
+  updateOnlineBadge();
+  showToast('ขาดการเชื่อมต่อเครือข่าย กำลังใช้งานโหมดออฟไลน์', 'warning');
+});
+function updateOnlineBadge() {
+  const el = document.getElementById('connection-badge');
+  if (state.isOnline) {
+    el.className = "text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-emerald-500 text-white flex items-center gap-1";
+    el.innerHTML = '<span class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></span> ออนไลน์';
+  } else {
+    el.className = "text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-rose-500 text-white flex items-center gap-1";
+    el.innerHTML = '<span class="w-1.5 h-1.5 bg-white rounded-full"></span> ออฟไลน์';
+  }
 }
 
-function filterByStatus(val) {
-    setChip(val === 'all' ? 'all' : val);
+// ===================== GPS FIELD SYSTEM =====================
+function setupGPS() {
+  if (!navigator.geolocation) {
+    showToast('อุปกรณ์ของคุณไม่สนับสนุนการทำงานของ GPS', 'error');
+    return;
+  }
+  
+  // Request position once and register high accuracy tracking
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      updateLocation(pos);
+      showToast('เชื่อมต่อสิทธิ์ GPS สำเร็จ', 'success');
+      startWatchPosition();
+    },
+    (err) => {
+      console.error(err);
+      showToast('กรุณาเปิดสิทธิ์และบริการระบุพิกัด GPS เพื่อใช้งานการตรวจระยะทาง', 'warning');
+      startWatchPosition(); // still try to watch
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
 }
 
-function showToast(msg, type = '') {
-    toast.textContent = msg;
-    toast.className = 'toast show ' + type;
-    setTimeout(() => toast.classList.remove('show'), 2800);
+function startWatchPosition() {
+  state.gpsWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      updateLocation(pos);
+    },
+    (err) => {
+      console.error(err);
+      state.gpsEnabled = false;
+      document.getElementById('gps-hud-badge').textContent = 'สัญญาณผิดพลาด';
+      document.getElementById('gps-hud-badge').className = 'text-xs px-2 py-0.5 rounded-full font-bold bg-rose-500 text-white';
+    },
+    { enableHighAccuracy: true, maximumAge: 0 }
+  );
 }
 
-function handleFile(file) {
-    if (!file || (!file.type.includes('text') && !file.name.endsWith('.txt'))) {
-        showToast('กรุณาเลือกไฟล์ .txt เท่านั้น', 'error');
-        return;
+function updateLocation(pos) {
+  state.userLat = pos.coords.latitude;
+  state.userLng = pos.coords.longitude;
+  state.userAcc = pos.coords.accuracy;
+  state.gpsEnabled = true;
+
+  // Update Dashboard HUD
+  const hudLat = document.getElementById('gps-hud-lat');
+  const hudLng = document.getElementById('gps-hud-lng');
+  const hudAcc = document.getElementById('gps-hud-acc');
+  const hudBadge = document.getElementById('gps-hud-badge');
+
+  if (hudLat) hudLat.textContent = state.userLat.toFixed(6);
+  if (hudLng) hudLng.textContent = state.userLng.toFixed(6);
+  
+  if (hudAcc) {
+    hudAcc.textContent = `±${Math.round(state.userAcc)} ม.`;
+    if (state.userAcc <= 10) {
+      hudAcc.className = "font-bold text-emerald-500 mt-0.5";
+      hudBadge.className = 'text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-500 text-white';
+      hudBadge.textContent = 'สัญญาณดีมาก';
+    } else if (state.userAcc <= 30) {
+      hudAcc.className = "font-bold text-amber-500 mt-0.5";
+      hudBadge.className = 'text-xs px-2 py-0.5 rounded-full font-bold bg-amber-500 text-white';
+      hudBadge.textContent = 'สัญญาณปานกลาง';
+    } else {
+      hudAcc.className = "font-bold text-rose-500 mt-0.5";
+      hudBadge.className = 'text-xs px-2 py-0.5 rounded-full font-bold bg-rose-500 text-white';
+      hudBadge.textContent = 'สัญญาณต่ำ';
     }
+  }
+
+  // Update Header Display
+  const headerGps = document.getElementById('header-gps-status');
+  const headerGpsText = document.getElementById('header-gps-text');
+  if (headerGps && headerGpsText) {
+    headerGps.classList.remove('hidden');
+    headerGpsText.textContent = `GPS: ±${Math.round(state.userAcc)}ม.`;
+  }
+
+  // Update Leaflet user marker if initialized
+  if (state.mapInstance) {
+    const latlng = L.latLng(state.userLat, state.userLng);
+    
+    if (!state.userMarker) {
+      state.userMarker = L.marker(latlng, { icon: createMarkerIcon('', true) }).addTo(state.mapInstance);
+      state.userAccuracyCircle = L.circle(latlng, { radius: state.userAcc, color: '#3b82f6', fillOpacity: 0.1, weight: 1 }).addTo(state.mapInstance);
+    } else {
+      state.userMarker.setLatLng(latlng);
+      state.userAccuracyCircle.setLatLng(latlng);
+      state.userAccuracyCircle.setRadius(state.userAcc);
+    }
+  }
+
+  // Calculate distances and trigger UI update for list items
+  updateDistancesInUI();
+}
+
+function updateDistancesInUI() {
+  // Update distances in current render list
+  state.records.forEach(rec => {
+    if (rec.lat && rec.lng && state.userLat) {
+      rec.current_distance = haversine(state.userLat, state.userLng, rec.lat, rec.lng);
+    } else {
+      rec.current_distance = Infinity;
+    }
+  });
+
+  // Re-render specific list elements without resetting scroll or search
+  const distanceElements = document.querySelectorAll('[data-distance-for]');
+  distanceElements.forEach(el => {
+    const id = el.getAttribute('data-distance-for');
+    const rec = state.records.find(r => r.id === id);
+    if (rec && rec.current_distance !== Infinity) {
+      const distInfo = getDistanceInfo(rec.current_distance);
+      el.className = `text-xs px-2.5 py-1 rounded-full font-bold border ${distInfo.color} flex items-center gap-1`;
+      el.innerHTML = distInfo.text;
+    }
+  });
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+  const R = 6371000; // Earth radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function getDistanceInfo(m) {
+  if (m === Infinity) return { text: '—', color: 'text-slate-400 bg-slate-50 border-slate-200' };
+  const dStr = m < 1000 ? Math.round(m) + ' ม.' : (m/1000).toFixed(1) + ' กม.';
+  if (m > 50) {
+    return { text: `🔴 ไกล (${dStr})`, color: 'text-rose-500 bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900/50' };
+  } else if (m > 20) {
+    return { text: `🟡 ใกล้ถึง (${dStr})`, color: 'text-amber-500 bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/50' };
+  } else {
+    return { text: `🟢 ถึงจุดแล้ว (${dStr})`, color: 'text-emerald-500 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/50' };
+  }
+}
+
+// ===================== AUTO POSITION TRACKING (AUTO SURVEY) =====================
+function startAutoSurveyLoop() {
+  // Check location and run survey matching every 10 seconds
+  setInterval(() => {
+    if (!state.gpsEnabled || !state.userLat) return;
+    runAutoSurveyCheck();
+  }, 10000);
+}
+
+function runAutoSurveyCheck() {
+  const unsurveyed = state.records.filter(r => r.status !== 'completed' && r.lat && r.lng);
+  let updatedAny = false;
+
+  unsurveyed.forEach(rec => {
+    const dist = haversine(state.userLat, state.userLng, rec.lat, rec.lng);
+    if (dist <= 20) {
+      // Auto survey target met!
+      rec.status = 'completed';
+      rec.surveyed_at = new Date().toLocaleString('th-TH');
+      rec.surveyor = state.surveyorName;
+      rec.gps_lat = state.userLat;
+      rec.gps_lng = state.userLng;
+      rec.distance_when_done = parseFloat(dist.toFixed(1));
+      
+      saveRecordToDB(rec);
+      updatedAny = true;
+      
+      // Feedback: Speech Synthesis & Vibrate
+      triggerArrivalAlert(rec);
+    }
+  });
+
+  if (updatedAny) {
+    renderStats();
+    applyFilters();
+    updateMapMarkers();
+  }
+}
+
+function triggerArrivalAlert(rec) {
+  // Haptic feedback
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
+  
+  // Text to Speech
+  try {
+    const speech = new SpeechSynthesisUtterance(`ถึงจุดสำรวจเลขที่ ${rec.address || ''} ระบบบันทึกสถานะการสำรวจสำเร็จเรียบร้อยค่ะ`);
+    speech.lang = 'th-TH';
+    speech.rate = 1.0;
+    window.speechSynthesis.speak(speech);
+  } catch (e) {
+    console.error('Speech fail', e);
+  }
+
+  showToast(`✅ สำรวจแล้ว: ${rec.address || rec.name} (อัตโนมัติ 20 ม.)`, 'success');
+}
+
+// ===================== MANUAL DISTANCE CHECK BUTTON =====================
+function checkDistanceManual(id, lat, lng, title) {
+  if (!state.userLat) {
+    showToast('กรุณารอสแกนตำแหน่ง GPS ปัจจุบันสักครู่...', 'warning');
+    setupGPS();
+    return;
+  }
+  if (!lat || !lng) {
+    showToast('รายการนี้ไม่ได้ระบุพิกัด ละติจูด/ลองจิจูด', 'error');
+    return;
+  }
+  const dist = haversine(state.userLat, state.userLng, lat, lng);
+  const distInfo = getDistanceInfo(dist);
+  
+  showToast(`📡 ระยะทางไปยัง "${title}": ${distInfo.text.replace(/🔴 |🟡 |🟢 /, '')}`, 'info');
+}
+
+// ===================== NAVIGATION SYSTEM =====================
+function startNavigation(lat, lng) {
+  if (!lat || !lng) {
+    showToast('ไม่สามารถนำทางได้เนื่องจากไม่มีข้อมูลพิกัด', 'error');
+    return;
+  }
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  window.open(url, '_blank');
+}
+
+// ===================== PHOTO CAPTURE & COMPRESSION =====================
+function triggerCamera(id) {
+  const input = document.getElementById(`camera-input-${id}`);
+  if (input) input.click();
+}
+
+async function handlePhotoCapture(id, event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  showToast('📸 กำลังบีบอัดภาพเพื่อบันทึก...', 'info');
+
+  try {
+    const base64Image = await compressImage(file, 800, 800, 0.75);
+    await savePhotoToDB(id, base64Image);
+    
+    // Update record state
+    const rec = state.records.find(r => r.id === id);
+    if (rec) {
+      rec.has_photo = true;
+      await saveRecordToDB(rec);
+    }
+    
+    showToast('📸 ถ่ายภาพและบันทึกเรียบร้อย', 'success');
+    applyFilters();
+  } catch (err) {
+    console.error(err);
+    showToast('ไม่สามารถย่อรูปหรือบันทึกได้', 'error');
+  }
+}
+
+function compressImage(file, maxWidth, maxHeight, quality) {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = e => parseLineChat(e.target.result);
-    reader.readAsText(file, 'UTF-8');
-}
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
 
-function parseLineChat(text) {
-    const lines = text.split('\n');
-    let tempQueue = [];
-    let currentRecord = null;
-
-    const lineMsgRegex = /^(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)\s+(.+?)\s{2,}(.*)$/;
-    const lineMsgRegex2 = /^(\d{1,2}:\d{2})\s+([^\t]+)\t(.*)$/;
-    const mapRegex = /(https?:\/\/(?:googleusercontent\.com\/maps\.google\.com|goo\.gl\/maps|maps\.google\.com|maps\.app\.goo\.gl)[^\s]+)/i;
-
-    lines.forEach(line => {
-        line = line.trim();
-        if (!line) return;
-        if (/เข้าร่วม|ออกจากกลุ่ม|เปลี่ยนชื่อ|ยกเลิกข้อความ|สติกเกอร์|\[Photo\]|\[Video\]|\[File\]/.test(line)) return;
-
-        let match = line.match(lineMsgRegex2) || line.match(lineMsgRegex);
-        if (match) {
-            const time = match[1];
-            const sender = match[2].trim();
-            const message = match[3].trim();
-
-            const mapMatch = message.match(mapRegex);
-
-            if (mapMatch) {
-                currentRecord = {
-                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 4),
-                    time, sender,
-                    details: message.replace(mapRegex, '').replace(/[:,\s]+$/, '').trim(),
-                    mapUrl: mapMatch[1],
-                    status: 'pending'
-                };
-                tempQueue.push(currentRecord);
-            } else if (currentRecord && sender === currentRecord.sender) {
-                if (message) currentRecord.details += (currentRecord.details ? ' ' : '') + message;
-            } else if (currentRecord && /ม\.|ซอย|บ้านเลขที่|หมู่|ถนน/.test(message)) {
-                currentRecord.details += ' | ' + sender + ': ' + message;
-            }
-
-            // Auto-close status
-            if (/สำรวจแล้ว|เรียบร้อยแล้ว|ดำเนินการแล้ว/.test(message)) {
-                const tag = message.replace(/^@/, '').split(/\s/)[0];
-                const found = tempQueue.find(q => q.sender === tag || tag.includes(q.sender));
-                if (found) found.status = 'done';
-            }
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
         }
-    });
 
-    if (tempQueue.length === 0) {
-        showToast('ไม่พบพิกัดแผนที่ในไฟล์นี้', 'error');
-        return;
-    }
-
-    surveyQueue = [...surveyQueue, ...tempQueue];
-    const uniqueMap = new Map();
-    surveyQueue.forEach(item => uniqueMap.set(item.mapUrl, item));
-    surveyQueue = Array.from(uniqueMap.values());
-
-    saveData();
-    updateTable();
-    showToast(`นำเข้าสำเร็จ — พบ ${tempQueue.length} พิกัด`, 'success');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedBase64);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
 }
 
-function updateTable() {
-    const term = searchBox.value.toLowerCase();
-    dataRows.innerHTML = '';
+async function openLightbox(id, title) {
+  const dataUrl = await getPhotoFromDB(id);
+  if (!dataUrl) {
+    showToast('ไม่พบข้อมูลรูปภาพ', 'error');
+    return;
+  }
 
-    let total = 0, pending = 0, done = 0;
-    surveyQueue.forEach(i => { total++; i.status === 'done' ? done++ : pending++; });
-    document.getElementById('s-total').textContent = total;
-    document.getElementById('s-pending').textContent = pending;
-    document.getElementById('s-done').textContent = done;
-
-    const filtered = surveyQueue.filter(item => {
-        const matchSearch = !term ||
-            item.sender.toLowerCase().includes(term) ||
-            item.details.toLowerCase().includes(term) ||
-            item.time.includes(term);
-        const matchStatus = activeFilter === 'all' || item.status === activeFilter;
-        return matchSearch && matchStatus;
-    });
-
-    document.getElementById('row-count').textContent = `${filtered.length} รายการ`;
-
-    if (filtered.length === 0) {
-        dataRows.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i class="fas fa-search"></i><p>ไม่พบรายการที่ตรงกัน</p></div></td></tr>`;
-        return;
-    }
-
-    filtered.forEach((item, idx) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="row-num">${String(idx + 1).padStart(2, '0')}</td>
-            <td class="td-time">${item.time}</td>
-            <td class="td-sender">${escHtml(item.sender)}</td>
-            <td class="td-detail">${item.details ? escHtml(item.details) : '<span style="color:var(--text-faint)">ไม่ได้ระบุ</span>'}</td>
-            <td><a href="${item.mapUrl}" target="_blank" class="btn-map"><i class="fas fa-map-marker-alt"></i> แผนที่</a></td>
-            <td>
-                <span class="badge ${item.status === 'done' ? 'badge-done' : 'badge-pending'}">
-                    ${item.status === 'done' ? 'สำรวจแล้ว' : 'รอดำเนินการ'}
-                </span>
-            </td>
-            <td>
-                <div class="action-group">
-                    <button class="icon-btn ${item.status === 'done' ? 'icon-btn-undo' : 'icon-btn-check'}" onclick="toggleStatus('${item.id}')" title="${item.status === 'done' ? 'ย้อนสถานะ' : 'ทำเครื่องหมายว่าสำรวจแล้ว'}">
-                        <i class="fas ${item.status === 'done' ? 'fa-rotate-left' : 'fa-check'}"></i>
-                    </button>
-                    <button class="icon-btn icon-btn-del" onclick="deleteRecord('${item.id}')" title="ลบรายการ">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </td>
-        `;
-        dataRows.appendChild(tr);
-    });
+  const html = `
+    <div class="modal-bg animate-fade" onclick="closeModal()">
+      <div class="max-w-xl w-full p-4 relative" onclick="event.stopPropagation()">
+        <button onclick="closeModal()" class="absolute -top-12 right-2 text-white bg-slate-800/80 hover:bg-slate-900 rounded-full p-2.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <div class="card rounded-2xl overflow-hidden shadow-2xl bg-black">
+          <img src="${dataUrl}" class="w-full h-auto max-h-[75vh] object-contain mx-auto" alt="Survey image">
+          <div class="p-4 bg-slate-900 text-white">
+            <h4 class="font-bold text-base">${title}</h4>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('modal-container').innerHTML = html;
 }
 
-function escHtml(str) {
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// ===================== MANUAL COMPLETED BUTTON & DATA INTEGRITY =====================
+function markAsCompleted(id) {
+  const rec = state.records.find(r => r.id === id);
+  if (!rec) return;
+
+  // Manual completed sets metadata
+  rec.status = 'completed';
+  rec.surveyed_at = new Date().toLocaleString('th-TH');
+  rec.surveyor = state.surveyorName;
+  
+  if (state.userLat && rec.lat) {
+    const dist = haversine(state.userLat, state.userLng, rec.lat, rec.lng);
+    rec.gps_lat = state.userLat;
+    rec.gps_lng = state.userLng;
+    rec.distance_when_done = parseFloat(dist.toFixed(1));
+  } else {
+    rec.gps_lat = null;
+    rec.gps_lng = null;
+    rec.distance_when_done = null;
+  }
+
+  saveRecordToDB(rec).then(() => {
+    showToast(`✅ ทำการบันทึกการสำรวจเรียบร้อยแล้ว`, 'success');
+    renderStats();
+    applyFilters();
+    updateMapMarkers();
+  });
 }
 
-function toggleStatus(id) {
-    const item = surveyQueue.find(i => i.id === id);
-    if (item) {
-        item.status = item.status === 'done' ? 'pending' : 'done';
-        saveData();
-        updateTable();
+// ===================== LEAFLET INTERACTIVE MAP =====================
+function initMap() {
+  if (state.mapInstance) {
+    state.mapInstance.invalidateSize(); // ensure it renders correctly on display
+    return;
+  }
+
+  // Bangkok default
+  const startLat = state.userLat || 13.7563;
+  const startLng = state.userLng || 100.5018;
+
+  state.mapInstance = L.map('map').setView([startLat, startLng], 15);
+
+  // Layers
+  const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(state.mapInstance);
+
+  const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19,
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+  });
+
+  const baseMaps = {
+    "แผนที่ถนน (OSM)": osmLayer,
+    "ภาพถ่ายดาวเทียม (Esri)": satelliteLayer
+  };
+
+  L.control.layers(baseMaps, null, { position: 'topright' }).addTo(state.mapInstance);
+
+  // User position marker
+  if (state.userLat) {
+    const latlng = L.latLng(state.userLat, state.userLng);
+    state.userMarker = L.marker(latlng, { icon: createMarkerIcon('', true) }).addTo(state.mapInstance);
+    state.userAccuracyCircle = L.circle(latlng, { radius: state.userAcc, color: '#3b82f6', fillOpacity: 0.1, weight: 1 }).addTo(state.mapInstance);
+  }
+
+  updateMapMarkers();
+}
+
+function centerMapOnUser() {
+  if (!state.userLat) {
+    showToast('กรุณารอสแกนตำแหน่ง GPS ปัจจุบันสักครู่...', 'warning');
+    setupGPS();
+    return;
+  }
+  state.mapInstance.setView([state.userLat, state.userLng], 17);
+}
+
+function showOnMap(lat, lng) {
+  if (!lat || !lng) {
+    showToast('รายการนี้ไม่ได้ระบุละติจูด/ลองจิจูด', 'error');
+    return;
+  }
+  switchTab('map');
+  setTimeout(() => {
+    state.mapInstance.setView([lat, lng], 18);
+    // Find marker and open popup
+    const marker = state.mapMarkers[lat + ',' + lng];
+    if (marker) marker.openPopup();
+  }, 100);
+}
+
+function updateMapMarkers() {
+  if (!state.mapInstance) return;
+
+  // Clear old markers
+  for (const key in state.mapMarkers) {
+    state.mapInstance.removeLayer(state.mapMarkers[key]);
+  }
+  state.mapMarkers = {};
+
+  state.records.forEach(rec => {
+    if (!rec.lat || !rec.lng) return;
+
+    const key = rec.lat + ',' + rec.lng;
+    const marker = L.marker([rec.lat, rec.lng], {
+      icon: createMarkerIcon(rec.status, false, rec.current_distance)
+    }).addTo(state.mapInstance);
+
+    const distInfo = rec.current_distance !== undefined ? getDistanceInfo(rec.current_distance).text : '—';
+    
+    // Popup Layout
+    const popupHtml = `
+      <div class="space-y-2 p-1 min-w-[200px] text-slate-800 dark:text-slate-200">
+        <div class="font-bold text-sm">${esc(rec.address || 'ไม่ระบุบ้านเลขที่')}</div>
+        <div class="text-xs text-slate-500">${esc(rec.name || 'ไม่ระบุชื่อ')} | ${esc(rec.soi || 'ไม่ระบุซอย')}</div>
+        <div class="flex items-center gap-1.5 mt-1">
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold ${getBadgeStyle(rec.status)}">${getStatusLabel(rec.status)}</span>
+          <span class="text-xs font-mono font-bold text-slate-600">${distInfo}</span>
+        </div>
+        <div class="flex gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <button onclick="startNavigation(${rec.lat},${rec.lng})" class="px-2.5 py-1.5 bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs rounded flex-1 text-center">🧭 นำทาง</button>
+          ${rec.status !== 'completed' ? `<button onclick="markAsCompleted('${rec.id}'); state.mapInstance.closePopup();" class="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded flex-1 text-center">✅ เสร็จ</button>` : ''}
+        </div>
+      </div>
+    `;
+
+    marker.bindPopup(popupHtml);
+    state.mapMarkers[key] = marker;
+  });
+}
+
+function createMarkerIcon(status, isUser = false, distance = Infinity) {
+  if (isUser) {
+    return L.divIcon({
+      html: `<div class="relative flex items-center justify-center w-8 h-8">
+               <div class="absolute w-8 h-8 bg-blue-500 rounded-full opacity-30 animate-ping"></div>
+               <div class="w-4.5 h-4.5 bg-blue-600 border-2 border-white rounded-full shadow-lg"></div>
+             </div>`,
+      className: '',
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+  }
+
+  let color = '#ef4444'; // Red (Pending >50m)
+  if (status === 'completed') {
+    color = '#10b981'; // Green (Completed)
+  } else if (status === 'processing') {
+    color = '#f59e0b'; // Yellow (Processing)
+  } else if (distance <= 50) {
+    color = '#f59e0b'; // Yellow (Pending but <= 50m)
+  }
+
+  return L.divIcon({
+    html: `<div class="w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative cursor-pointer" style="background-color: ${color}">
+             <div class="w-2 h-2 bg-white rounded-full"></div>
+           </div>`,
+    className: '',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+  });
+}
+
+function getStatusLabel(status) {
+  if (status === 'completed') return 'สำรวจแล้ว';
+  if (status === 'processing') return 'กำลังสำรวจ';
+  return 'รอสำรวจ';
+}
+
+function getBadgeStyle(status) {
+  if (status === 'completed') return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
+  if (status === 'processing') return 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300';
+  return 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300';
+}
+
+// ===================== MERGE LOGIC & DATA INTEGRITY =====================
+function mergeRecords(incoming) {
+  let added = 0, merged = 0;
+
+  for (const rec of incoming) {
+    // Find duplicate in state by lat/lng or address
+    const dup = state.records.find(r => {
+      if (rec.lat && rec.lng && r.lat && r.lng) {
+        const dlat = Math.abs(r.lat - rec.lat);
+        const dlng = Math.abs(r.lng - rec.lng);
+        return dlat < 0.0001 && dlng < 0.0001;
+      }
+      if (rec.address && r.address && rec.address.trim() === r.address.trim()) return true;
+      return false;
+    });
+
+    if (dup) {
+      // Security Check: Never Downgrade Completed done -> pending or done -> processing
+      if (dup.status === 'completed') {
+        // Leave status completed, do not overwrite status
+      } else {
+        // Upgrade allowed (pending -> processing -> completed)
+        const statusPriority = { completed: 3, processing: 2, pending: 1 };
+        if (statusPriority[rec.status] > statusPriority[dup.status]) {
+          dup.status = rec.status;
+        }
+      }
+
+      // Merge notes
+      if (rec.note) {
+        dup.note = (dup.note ? dup.note + '\n---\n' : '') + `[${rec.created_at}] ${rec.name}: ${rec.note}`;
+      }
+      if (!dup.phone && rec.phone) dup.phone = rec.phone;
+      if (!dup.soi && rec.soi) dup.soi = rec.soi;
+      
+      merged++;
+    } else {
+      state.records.push(rec);
+      added++;
     }
+  }
+
+  return { added, merged };
+}
+
+// ===================== DYNAMIC RENDER & INFINITE SCROLL =====================
+function applyFilters() {
+  state.searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+  state.soiFilter = document.getElementById('soi-filter').value;
+  state.distanceFilter = document.getElementById('distance-filter').value;
+  
+  let list = [...state.records];
+
+  // Status Filter
+  if (state.statusFilter !== 'all') {
+    list = list.filter(r => r.status === state.statusFilter);
+  }
+
+  // Soi Filter
+  if (state.soiFilter) {
+    list = list.filter(r => r.soi === state.soiFilter);
+  }
+
+  // Distance calculations check
+  list.forEach(rec => {
+    if (rec.lat && rec.lng && state.userLat) {
+      rec.current_distance = haversine(state.userLat, state.userLng, rec.lat, rec.lng);
+    } else {
+      rec.current_distance = Infinity;
+    }
+  });
+
+  // Distance Filter
+  if (state.distanceFilter !== 'all') {
+    if (state.distanceFilter === 'near') {
+      list = list.filter(r => r.current_distance <= 20);
+    } else if (state.distanceFilter === 'mid') {
+      list = list.filter(r => r.current_distance > 20 && r.current_distance <= 50);
+    } else if (state.distanceFilter === 'far') {
+      list = list.filter(r => r.current_distance > 50);
+    }
+  }
+
+  // Search Filter
+  if (state.searchQuery) {
+    list = list.filter(r => {
+      const hay = [r.name, r.address, r.soi, r.phone, r.note, r.lat, r.lng].join(' ').toLowerCase();
+      return state.searchQuery.split(' ').every(w => hay.includes(w));
+    });
+  }
+
+  // Sort: If GPS active, sort unsurveyed targets by distance
+  if (state.gpsEnabled && state.userLat) {
+    list.sort((a, b) => {
+      // Completed items go bottom
+      if (a.status === 'completed' && b.status !== 'completed') return 1;
+      if (a.status !== 'completed' && b.status === 'completed') return -1;
+      
+      const distA = a.current_distance || Infinity;
+      const distB = b.current_distance || Infinity;
+      return distA - distB;
+    });
+  }
+
+  state.filtered = list;
+  state.renderLimit = 50; // reset pagination
+  renderList(false);
+}
+
+function renderList(append = false) {
+  const container = document.getElementById('list-section');
+  const empty = document.getElementById('empty-state');
+  const countEl = document.getElementById('result-count');
+
+  if (state.records.length === 0) {
+    container.innerHTML = '';
+    empty.classList.remove('hidden');
+    countEl.textContent = '';
+    return;
+  }
+
+  empty.classList.add('hidden');
+  countEl.textContent = `แสดง ${Math.min(state.renderLimit, state.filtered.length)} จาก ${state.filtered.length} รายการ`;
+
+  if (state.filtered.length === 0) {
+    container.innerHTML = `<div class="text-center py-16 text-c2 text-sm">ไม่พบรายการสำรวจตามเงื่อนไขการค้นหา</div>`;
+    return;
+  }
+
+  // Slice list
+  const slice = state.filtered.slice(0, state.renderLimit);
+  const q = state.searchQuery;
+
+  const html = slice.map((rec, i) => {
+    const distInfo = rec.current_distance !== undefined && rec.current_distance !== Infinity ? getDistanceInfo(rec.current_distance) : null;
+    const distanceBadge = distInfo ? `<span data-distance-for="${rec.id}" class="text-xs px-2.5 py-1 rounded-full font-bold border ${distInfo.color} flex items-center gap-1">${distInfo.text}</span>` : '';
+    
+    // Status border color logic
+    let cardStatusClass = `card-${rec.status}`;
+    if (rec.status === 'pending' && rec.current_distance <= 50 && rec.current_distance !== Infinity) {
+      cardStatusClass = `border-l-5 border-amber-400`; // yellow warning if close
+    }
+
+    return `
+    <div class="card card-hover rounded-2xl p-4 md:p-5 ${cardStatusClass} animate-slide space-y-3" style="animation-delay: ${Math.min(i*0.015, 0.2)}s">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex-1 min-w-0 space-y-2">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${getBadgeStyle(rec.status)}">${getStatusLabel(rec.status)}</span>
+            ${distanceBadge}
+            <span class="text-[11px] text-c3 font-mono">นำเข้า: ${rec.created_at}</span>
+          </div>
+
+          <div class="font-bold text-lg text-c">${highlight(rec.name || 'ไม่ระบุชื่อ', q)}</div>
+          
+          ${rec.address ? `<div class="text-sm text-c2 flex items-center gap-1.5">
+            <svg class="flex-shrink-0 text-c3" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span class="font-semibold">${highlight(rec.address, q)}</span> ${rec.soi ? ' · ' + highlight(rec.soi, q) : ''}
+          </div>` : ''}
+
+          ${rec.phone ? `<div class="text-sm text-c2 flex items-center gap-1.5">
+            <svg class="flex-shrink-0 text-c3" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.54 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <a href="tel:${rec.phone}" class="text-brand-600 dark:text-brand-400 hover:underline font-bold">${highlight(rec.phone, q)}</a>
+          </div>` : ''}
+
+          ${rec.lat ? `<div class="text-xs font-mono text-c3 flex items-center gap-1.5">
+            <svg class="flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            พิกัด: ${rec.lat.toFixed(6)}, ${rec.lng.toFixed(6)}
+          </div>` : ''}
+
+          ${rec.note ? `<div class="text-xs text-c3 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border border-c mt-1 whitespace-pre-line">${highlight(rec.note, q)}</div>` : ''}
+
+          <!-- Survey History Display -->
+          ${rec.status === 'completed' && rec.surveyed_at ? `
+            <div class="text-[11px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 p-2 rounded-lg border border-emerald-200 dark:border-emerald-900/50 space-y-0.5">
+              <div class="font-bold flex items-center gap-1">📋 ประวัติการสำรวจสำเร็จ</div>
+              <div>เวลา: ${rec.surveyed_at}</div>
+              <div>ผู้บันทึก: ${esc(rec.surveyor || 'ระบบ')}</div>
+              ${rec.distance_when_done !== null ? `<div>ระยะตรวจจับ: ${rec.distance_when_done} ม. (${rec.gps_lat ? 'พิกัด GPS จริง' : 'แมนนวล'})</div>` : ''}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Touch Action Buttons (Mobile First layout) -->
+        <div class="flex flex-col gap-2 flex-shrink-0 w-24">
+          <!-- 1. Check Distance -->
+          ${rec.lat ? `<button onclick="checkDistanceManual('${rec.id}', ${rec.lat}, ${rec.lng}, '${(rec.address || rec.name || '').replace(/'/g, "\\'")}')" class="btn btn-ghost py-2 text-xs flex items-center justify-center gap-1" title="ตรวจวัดระยะทางจริง">
+            <span>📡</span> ตรวจระยะ
+          </button>` : ''}
+
+          <!-- 2. Navigate -->
+          ${rec.lat ? `<button onclick="startNavigation(${rec.lat}, ${rec.lng})" class="btn text-white py-2 text-xs font-bold bg-brand-500 hover:bg-brand-600 flex items-center justify-center gap-1 shadow-sm" title="นำทางผ่าน Google Maps">
+            <span>🧭</span> นำทาง
+          </button>` : ''}
+
+          <!-- 3. Mark completed (Disabled if completed already) -->
+          ${rec.status !== 'completed' ? `
+            <button onclick="markAsCompleted('${rec.id}')" class="btn text-white py-2 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center gap-1 shadow-sm" title="บันทึกสำรวจแล้ว">
+              <span>✅</span> สำรวจแล้ว
+            </button>
+          ` : `
+            <button class="btn border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 py-2 text-xs font-bold opacity-60 cursor-not-allowed flex items-center justify-center gap-1" disabled>
+              <span>✓</span> สำรวจแล้ว
+            </button>
+          `}
+
+          <!-- 4. Take Photo -->
+          <input type="file" id="camera-input-${rec.id}" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoCapture('${rec.id}', event)">
+          <button onclick="triggerCamera('${rec.id}')" class="btn btn-ghost py-2 text-xs flex items-center justify-center gap-1 hover:border-indigo-500 hover:text-indigo-500" title="ถ่ายภาพพยานภาคสนาม">
+            <span>📸</span> ${rec.has_photo ? 'ดูรูป/ถ่ายใหม่' : 'ถ่ายรูป'}
+          </button>
+          
+          <!-- Photo Thumbnail -->
+          ${rec.has_photo ? `
+            <div class="w-20 h-16 rounded-lg overflow-hidden border border-c cursor-pointer hover:opacity-80 mx-auto shadow-sm" onclick="openLightbox('${rec.id}', '${(rec.address || rec.name || '').replace(/'/g, "\\'")}')">
+              <div id="thumb-${rec.id}" class="w-full h-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 bg-cover bg-center" style="background-image: url('')">โหลดรูป...</div>
+            </div>
+          ` : ''}
+
+          <!-- 5. Show Marker on Map -->
+          ${rec.lat ? `<button onclick="showOnMap(${rec.lat}, ${rec.lng})" class="btn btn-ghost py-2 text-xs flex items-center justify-center gap-1" title="แสดงพิกัดบนแผนที่ในตัว">
+            <span>📍</span> ดูพิกัด
+          </button>` : ''}
+
+          <!-- 6. Edit -->
+          <button onclick="openEditModal('${rec.id}')" class="btn btn-ghost py-2 text-xs flex items-center justify-center gap-1" title="แก้ไขข้อมูลข้อมูล">
+            <span>✏️</span> แก้ไข
+          </button>
+        </div>
+      </div>
+      <div class="border-t border-c pt-2 flex items-center justify-between text-xs text-c3">
+        <span>รายการลำรวจที่ #${String(i+1).padStart(3, '0')}</span>
+        <button onclick="deleteRecord('${rec.id}')" class="text-rose-500 hover:underline">ลบรายการ</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (append) {
+    container.innerHTML += html;
+  } else {
+    container.innerHTML = html;
+  }
+
+  // Async load thumbnails
+  slice.forEach(async rec => {
+    if (rec.has_photo) {
+      const el = document.getElementById(`thumb-${rec.id}`);
+      if (el) {
+        const url = await getPhotoFromDB(rec.id);
+        if (url) {
+          el.style.backgroundImage = `url('${url}')`;
+          el.textContent = '';
+        } else {
+          el.textContent = '❌ ไม่มีรูป';
+        }
+      }
+    }
+  });
+}
+
+function highlight(text, q) {
+  if (!q || !text) return text || '';
+  const safe = text.toString().replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  try {
+    const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    return safe.replace(new RegExp(escapedQuery, 'gi'), m => `<mark>${m}</mark>`);
+  } catch { return safe; }
+}
+
+function esc(s) {
+  return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ===================== INFINITE SCROLL DETECTION =====================
+window.addEventListener('scroll', () => {
+  if (state.activeTab !== 'queue') return;
+  if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 400) {
+    if (state.renderLimit < state.filtered.length) {
+      state.renderLimit += 50;
+      renderList(false); // fast re-render slice
+    }
+  }
+});
+
+// ===================== EDIT MODAL & DATA INTEGRITY LOCKS =====================
+function openEditModal(id) {
+  const rec = state.records.find(r => r.id === id);
+  if (!rec) return;
+
+  const isCompleted = rec.status === 'completed';
+
+  const html = `
+    <div class="modal-bg animate-fade" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box animate-slide p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-lg text-c">✏️ แก้ไขข้อมูลแปลงสำรวจ</h3>
+          <button onclick="closeModal()" class="btn btn-ghost p-1.5 rounded-lg" style="min-height:36px; min-width:36px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div><label class="fl">ชื่อผู้ส่ง</label><input class="fi mt-1" id="e-name" value="${esc(rec.name)}"></div>
+          <div><label class="fl">บ้านเลขที่</label><input class="fi mt-1" id="e-address" value="${esc(rec.address)}"></div>
+          <div><label class="fl">ซอย</label><input class="fi mt-1" id="e-soi" value="${esc(rec.soi)}"></div>
+          <div><label class="fl">เบอร์โทร</label><input class="fi mt-1" id="e-phone" value="${esc(rec.phone)}"></div>
+          <div><label class="fl">ละติจูด (Latitude)</label><input class="fi mt-1 font-mono text-sm" id="e-lat" value="${rec.lat||''}"></div>
+          <div><label class="fl">ลองจิจูด (Longitude)</label><input class="fi mt-1 font-mono text-sm" id="e-lng" value="${rec.lng||''}"></div>
+          <div class="sm:col-span-2"><label class="fl">Google Maps Link</label><input class="fi mt-1 font-mono text-xs" id="e-url" value="${esc(rec.map_url)}"></div>
+          <div class="sm:col-span-2">
+            <label class="fl">สถานะสำรวจ</label>
+            <select class="fi mt-1 font-bold text-slate-800 dark:text-white" id="e-status" ${isCompleted ? 'disabled' : ''}>
+              <option value="pending" ${rec.status==='pending'?'selected':''}>🔴 รอสำรวจ</option>
+              <option value="processing" ${rec.status==='processing'?'selected':''}>🟡 กำลังสำรวจ</option>
+              <option value="completed" ${rec.status==='completed'?'selected':''}>🟢 สำรวจแล้ว (เสร็จสิ้น)</option>
+            </select>
+            ${isCompleted ? `<span class="text-xs text-rose-500 block mt-1 font-bold">⚠️ สถานะสำรวจแล้วถูกล็อกตามนโยบายระบบ ห้ามลดระดับสถานะเด็ดขาด</span>` : ''}
+          </div>
+          <div class="sm:col-span-2"><label class="fl">หมายเหตุแชท LINE</label><textarea class="fi mt-1 text-sm" id="e-note" rows="3">${esc(rec.note)}</textarea></div>
+        </div>
+        <div class="flex gap-2 justify-end pt-2">
+          <button onclick="closeModal()" class="btn btn-ghost">ยกเลิก</button>
+          <button onclick="saveEdit('${id}')" class="btn btn-primary">บันทึกข้อมูล</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('modal-container').innerHTML = html;
+}
+
+function saveEdit(id) {
+  const rec = state.records.find(r => r.id === id);
+  if (!rec) return;
+
+  const newStatus = document.getElementById('e-status').value;
+
+  // Double Check Security: Prevent downgrade in logic
+  if (rec.status === 'completed' && newStatus !== 'completed') {
+    showToast('ห้ามเปลี่ยนสถานะสำรวจแล้ว (completed) เป็นสถานะอื่นโดยเด็ดขาด!', 'error');
+    return;
+  }
+
+  rec.name = document.getElementById('e-name').value.trim();
+  rec.address = document.getElementById('e-address').value.trim();
+  rec.soi = document.getElementById('e-soi').value.trim();
+  rec.phone = document.getElementById('e-phone').value.trim();
+  rec.lat = parseFloat(document.getElementById('e-lat').value) || null;
+  rec.lng = parseFloat(document.getElementById('e-lng').value) || null;
+  rec.map_url = document.getElementById('e-url').value.trim();
+  
+  if (rec.status !== 'completed' && newStatus === 'completed') {
+    // Upgraded to completed: save history
+    rec.status = 'completed';
+    rec.surveyed_at = new Date().toLocaleString('th-TH');
+    rec.surveyor = state.surveyorName;
+    if (state.userLat && rec.lat) {
+      rec.gps_lat = state.userLat;
+      rec.gps_lng = state.userLng;
+      rec.distance_when_done = parseFloat(haversine(state.userLat, state.userLng, rec.lat, rec.lng).toFixed(1));
+    }
+  } else if (rec.status !== 'completed') {
+    rec.status = newStatus;
+  }
+
+  rec.note = document.getElementById('e-note').value.trim();
+
+  saveRecordToDB(rec).then(() => {
+    closeModal();
+    updateSoiDropdown();
+    renderStats();
+    applyFilters();
+    updateMapMarkers();
+    showToast('แก้ไขบันทึกสำเร็จ', 'success');
+  });
 }
 
 function deleteRecord(id) {
-    if (confirm('ลบรายการนี้ออกจากคิวใช่หรือไม่?')) {
-        surveyQueue = surveyQueue.filter(i => i.id !== id);
-        saveData();
-        updateTable();
-        showToast('ลบรายการแล้ว');
-    }
+  if (!confirm('ยืนยันลบรายการสำรวจนี้อย่างถาวร?')) return;
+  deleteRecordFromDB(id).then(() => {
+    state.records = state.records.filter(r => r.id !== id);
+    updateSoiDropdown();
+    renderStats();
+    applyFilters();
+    updateMapMarkers();
+    showToast('ลบรายการสำเร็จ', 'info');
+  });
 }
 
-function clearAll() {
-    if (surveyQueue.length === 0) { showToast('ไม่มีข้อมูลให้ล้าง', 'error'); return; }
-    if (confirm('ล้างข้อมูลคิวทั้งหมดใช่หรือไม่? ไม่สามารถกู้คืนได้')) {
-        surveyQueue = [];
-        saveData();
-        updateTable();
-        showToast('ล้างข้อมูลทั้งหมดแล้ว');
-    }
+function closeModal() {
+  document.getElementById('modal-container').innerHTML = '';
 }
 
+// ===================== NEW DASHBOARD & STATS =====================
+function renderStats() {
+  const total = state.records.length;
+  const done = state.records.filter(r => r.status === 'completed').length;
+  const processing = state.records.filter(r => r.status === 'processing').length;
+  const pending = state.records.filter(r => r.status === 'pending').length;
+  
+  // Calculate near < 50m count (only pending/processing targets)
+  let nearCount = 0;
+  if (state.userLat) {
+    nearCount = state.records.filter(r => r.status !== 'completed' && r.lat && r.lng && haversine(state.userLat, state.userLng, r.lat, r.lng) <= 50).length;
+  }
+
+  const pct = total ? Math.round(done / total * 100) : 0;
+  
+  // Counters HTML
+  const countersContainer = document.getElementById('dashboard-counters');
+  countersContainer.innerHTML = `
+    <div class="card rounded-2xl p-4 flex flex-col gap-1.5 border-slate-200">
+      <div class="text-c3 text-xs font-semibold uppercase tracking-wide">ทั้งหมด</div>
+      <div class="text-3xl font-extrabold text-c font-mono">${total}</div>
+      <div class="text-[11px] text-c3">แปลงทั้งหมดในคิว</div>
+    </div>
+    <div class="card rounded-2xl p-4 flex flex-col gap-1.5 border-rose-200 bg-rose-50/5">
+      <div class="text-rose-500 text-xs font-semibold uppercase tracking-wide">รอสำรวจ</div>
+      <div class="text-3xl font-extrabold font-mono text-rose-500">${pending}</div>
+      <div class="text-[11px] text-rose-400">ยังไม่ได้ลงพื้นที่</div>
+    </div>
+    <div class="card rounded-2xl p-4 flex flex-col gap-1.5 border-amber-200 bg-amber-50/5">
+      <div class="text-amber-500 text-xs font-semibold uppercase tracking-wide">กำลังสำรวจ</div>
+      <div class="text-3xl font-extrabold font-mono text-amber-500">${processing}</div>
+      <div class="text-[11px] text-amber-400">อยู่ระหว่างสำรวจ/ติดขัด</div>
+    </div>
+    <div class="card rounded-2xl p-4 flex flex-col gap-1.5 border-emerald-200 bg-emerald-50/5">
+      <div class="text-emerald-500 text-xs font-semibold uppercase tracking-wide">สำรวจแล้ว</div>
+      <div class="text-3xl font-extrabold font-mono text-emerald-500">${done}</div>
+      <div class="text-[11px] text-emerald-400">เสร็จสิ้นสมบูรณ์</div>
+    </div>
+    <div class="card rounded-2xl p-4 flex flex-col gap-1.5 border-blue-200 bg-blue-50/5 col-span-2 md:col-span-1">
+      <div class="text-blue-500 text-xs font-semibold uppercase tracking-wide">อยู่ใกล้ตัว (<50ม.)</div>
+      <div class="text-3xl font-extrabold font-mono text-blue-500">${nearCount}</div>
+      <div class="text-[11px] text-blue-400">แปลงสำรวจรอบตัวปัจจุบัน</div>
+    </div>
+    <div class="card rounded-2xl p-4 flex flex-col gap-1.5 border-brand-200 bg-brand-50/5 col-span-2 md:col-span-1">
+      <div class="text-brand-500 text-xs font-semibold uppercase tracking-wide">อัตราความสำเร็จ</div>
+      <div class="text-3xl font-extrabold font-mono text-brand-600">${pct}%</div>
+      <div class="text-[11px] text-brand-400">ความคืบหน้าภาพรวม</div>
+    </div>
+  `;
+
+  // Progress HTML
+  const progressContainer = document.getElementById('success-progress-card');
+  progressContainer.innerHTML = `
+    <div class="flex items-center justify-between text-sm">
+      <span class="font-bold text-c">📊 แถบแสดงอัตราความสำเร็จงานสำรวจภาคสนาม</span>
+      <span class="font-mono font-bold text-brand-600 dark:text-brand-400 text-base">${pct}%</span>
+    </div>
+    <div class="progress-track h-4 shadow-inner">
+      <div class="progress-fill h-4" style="width:${pct}%"></div>
+    </div>
+    <div class="text-xs text-c3 flex items-center justify-between">
+      <span>ดำเนินการเสร็จสิ้น ${done} จาก ${total} แปลงสำรวจ</span>
+      <span>คงเหลือที่ต้องดำเนินการอีก ${total - done} แปลง</span>
+    </div>
+  `;
+}
+
+// ===================== SOI DROPDOWN DROPDOWN =====================
+function updateSoiDropdown() {
+  const sois = [...new Set(state.records.map(r => r.soi).filter(Boolean))].sort();
+  const sel = document.getElementById('soi-filter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">ซอย: ทั้งหมด</option>' + sois.map(s => `<option value="${esc(s)}" ${cur===s?'selected':''}>${s}</option>`).join('');
+}
+
+// ===================== TOAST NOTIFICATION =====================
+function showToast(msg, type = 'info') {
+  const colors = { success:'#10b981', error:'#ef4444', info:'#3b82f6', warning:'#f59e0b' };
+  const icons = {
+    success: '<polyline points="20 6 9 17 4 12"/>',
+    error: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r=".5" fill="currentColor"/>',
+    warning: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".5" fill="currentColor"/>',
+  };
+  
+  const el = document.createElement('div');
+  el.className = 'toast-item';
+  el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${colors[type]}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">${icons[type]}</svg><span class="font-semibold">${msg}</span>`;
+  const container = document.getElementById('toast');
+  container.appendChild(el);
+  
+  setTimeout(() => {
+    el.style.opacity='0'; 
+    el.style.transform='translateY(8px)'; 
+    el.style.transition='all .25s ease'; 
+    setTimeout(() => el.remove(), 250); 
+  }, 4000);
+}
+
+// ===================== SURVEYOR NAME SETTINGS =====================
+function updateSurveyorName(name) {
+  state.surveyorName = name.trim() || 'ผู้สำรวจภาคสนาม';
+  localStorage.setItem(STORAGE_SURVEYOR_KEY, state.surveyorName);
+}
+
+// ===================== PROCESS LINE CHAT IMPORT =====================
+function parseLineExport(text) {
+  const lines = text.split(/\r?\n/);
+  const results = [];
+  
+  // Regex support multiple styles
+  const singleLineRx = /\[(\d{1,2}\/\d{1,2}\/\d{2,4}),\s*(\d{1,2}:\d{2})\]\s*([^:]+):\s*(.+)/;
+  const thaiLineRx = /^(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s+(\d{1,2}:\d{2})\s+(.+)/;
+  
+  let currentMsg = null;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    let m = line.match(singleLineRx);
+    if (m) {
+      if (currentMsg) results.push(currentMsg);
+      currentMsg = { date: m[1], time: m[2], sender: m[3].trim(), message: m[4].trim() };
+      continue;
+    }
+    
+    m = line.match(thaiLineRx);
+    if (m) {
+      if (currentMsg) results.push(currentMsg);
+      const nextLine = (lines[i+1] || '').trim();
+      const senderMsg = nextLine.match(/^(.+?):\s*(.+)/);
+      if (senderMsg) {
+        currentMsg = { date: m[1], time: m[2], sender: senderMsg[1].trim(), message: senderMsg[2].trim() };
+        i++;
+      } else {
+        currentMsg = { date: m[1], time: m[2], sender: m[3].trim(), message: nextLine };
+        i++;
+      }
+      continue;
+    }
+    
+    if (currentMsg) {
+      currentMsg.message += '\n' + line;
+    }
+  }
+  if (currentMsg) results.push(currentMsg);
+  
+  const mapsRx = /https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl\/maps|google\.com\/maps|www\.google\.com\/maps|maps\.google\.com)[^\s]*/gi;
+  const mapMessages = results.filter(r => mapsRx.test(r.message));
+  
+  return mapMessages.map(r => {
+    mapsRx.lastIndex = 0;
+    const urlMatch = r.message.match(mapsRx);
+    const mapUrl = urlMatch ? urlMatch[0] : '';
+    const { lat, lng } = extractLatLng(mapUrl);
+    
+    return {
+      id: genId(),
+      name: r.sender,
+      address: extractAddress(r.message),
+      soi: extractSoi(r.message),
+      phone: extractPhone(r.message),
+      map_url: mapUrl,
+      lat,
+      lng,
+      status: detectStatus(r.message),
+      note: r.message.replace(mapsRx, '').trim(),
+      created_at: r.date + ' ' + r.time,
+    };
+  });
+}
+
+function extractLatLng(url) {
+  if (!url) return { lat: null, lng: null };
+  let m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  m = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  m = url.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  m = url.match(/destination=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  return { lat: null, lng: null };
+}
+
+function extractAddress(text) {
+  const patterns = [
+    /บ้านเลขที่\s*(\d+[\w\/\-]*(?:\s+หมู่\s*\d+)?)/,
+    /เลขที่\s*(\d+[\w\/\-]*(?:\s+หมู่\s*\d+)?)/,
+    /(\d+\/\d+(?:\s+หมู่\s*\d+)?)/,
+    /(\d+\s+หมู่\s*\d+)/,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) return m[1].trim();
+  }
+  return '';
+}
+
+function extractPhone(text) {
+  const m = text.match(/0\d{8,9}/);
+  return m ? m[0] : '';
+}
+
+function extractSoi(text) {
+  const m = text.match(/ซ(?:อย|\.)\s*([^\s,]+)/);
+  if (m) return 'ซอย' + m[1].trim();
+  const m2 = text.match(/ซอย\s*([^\s,]+)/);
+  if (m2) return 'ซอย' + m2[1].trim();
+  return '';
+}
+
+function detectStatus(text) {
+  if (/รออยู่บ้าน|อยู่บ้านแล้ว/.test(text)) return 'processing';
+  if (/สำรวจแล้ว|เรียบร้อย|เสร็จแล้ว/.test(text)) return 'completed';
+  return 'pending';
+}
+
+function handleFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('import-drop').classList.remove('dragging');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.txt')) {
+    readTextFile(file);
+  } else {
+    showToast('กรุณาวางเฉพาะไฟล์นามสกุล .txt เท่านั้น', 'error');
+  }
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) readTextFile(file);
+}
+
+function readTextFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('import-text').value = ev.target.result;
+    showToast('โหลดเนื้อหาไฟล์นำเข้าแล้ว: ' + file.name, 'success');
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// Register UTM Zones globally
+try {
+  proj4.defs("EPSG:32647", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs");
+  proj4.defs("EPSG:32648", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
+} catch(e) {
+  console.warn("Proj4 definitions deferred");
+}
+
+function detectFormat(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return 'empty';
+  
+  const firstLine = lines[0].toLowerCase();
+  const csvHeaders = ['lat', 'lng', 'latitude', 'longitude', 'name', 'address', 'phone', 'x', 'y', 'easting', 'northing', 'ชื่อ', 'บ้านเลขที่', 'พิกัด'];
+  const hasCsvHeader = csvHeaders.some(h => firstLine.includes(h));
+  
+  const delimiter = detectDelimiter(lines[0]);
+  const splitCount = lines[0].split(delimiter).length;
+  
+  if (hasCsvHeader && splitCount > 1) {
+    return 'csv';
+  }
+  return 'line';
+}
+
+function detectDelimiter(firstLine) {
+  const commas = (firstLine.match(/,/g) || []).length;
+  const tabs = (firstLine.match(/\t/g) || []).length;
+  const semicolons = (firstLine.match(/;/g) || []).length;
+  if (tabs > commas && tabs > semicolons) return '\t';
+  if (semicolons > commas && semicolons > tabs) return ';';
+  return ',';
+}
+
+function parseCSV(text) {
+  const lines = [];
+  let row = [""];
+  let inQuotes = false;
+  
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i+1];
+    
+    if (c === '"') {
+      if (inQuotes && next === '"') {
+        row[row.length - 1] += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (c === ',' && !inQuotes) {
+      row.push("");
+    } else if ((c === '\r' || c === '\n') && !inQuotes) {
+      if (c === '\r' && next === '\n') i++;
+      lines.push(row);
+      row = [""];
+    } else {
+      row[row.length - 1] += c;
+    }
+  }
+  if (row.length > 1 || row[0] !== "") {
+    lines.push(row);
+  }
+  return lines;
+}
+
+function mapHeaders(headers) {
+  const mapping = {
+    name: -1,
+    address: -1,
+    soi: -1,
+    phone: -1,
+    note: -1,
+    lat: -1,
+    lng: -1,
+    zone: -1
+  };
+  
+  const nameSynonyms = ['name', 'ชื่อ', 'sender', 'ผู้ส่ง', 'customer', 'ผู้รับการสำรวจ'];
+  const addressSynonyms = ['address', 'บ้านเลขที่', 'เลขที่', 'ที่อยู่', 'parcel_no', 'เลขแปลง', 'แปลง', 'house_no'];
+  const soiSynonyms = ['soi', 'ซอย', 'หมู่บ้าน'];
+  const phoneSynonyms = ['phone', 'tel', 'เบอร์โทร', 'เบอร์', 'โทร', 'telephone'];
+  const noteSynonyms = ['note', 'หมายเหตุ', 'message', 'ข้อความ', 'details', 'รายละเอียด'];
+  
+  const latSynonyms = ['lat', 'latitude', 'y', 'utm_northing', 'utm_n', 'northing', 'พิกัด_n', 'n'];
+  const lngSynonyms = ['lng', 'lon', 'longitude', 'x', 'utm_easting', 'utm_e', 'easting', 'e'];
+  const zoneSynonyms = ['zone', 'utm_zone', 'โซน'];
+  
+  headers.forEach((h, index) => {
+    const clean = h.trim().toLowerCase();
+    
+    if (nameSynonyms.some(s => clean === s || clean.includes(s))) mapping.name = index;
+    if (addressSynonyms.some(s => clean === s || clean.includes(s))) mapping.address = index;
+    if (soiSynonyms.some(s => clean === s || clean.includes(s))) mapping.soi = index;
+    if (phoneSynonyms.some(s => clean === s || clean.includes(s))) mapping.phone = index;
+    if (noteSynonyms.some(s => clean === s || clean.includes(s))) mapping.note = index;
+    
+    if (latSynonyms.some(s => clean === s || clean.includes(s))) mapping.lat = index;
+    if (lngSynonyms.some(s => clean === s || clean.includes(s))) mapping.lng = index;
+    if (zoneSynonyms.some(s => clean === s || clean.includes(s))) mapping.zone = index;
+  });
+  
+  return mapping;
+}
+
+function convertUTMToWGS84(easting, northing, zone = null) {
+  try {
+    proj4.defs("EPSG:32647", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs");
+    proj4.defs("EPSG:32648", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
+  } catch(e) {}
+
+  if (zone === 47 || zone === '47' || zone === '47N') {
+    const p = proj4("EPSG:32647", "WGS84", [easting, northing]);
+    return { lat: p[1], lng: p[0], zone: 47 };
+  }
+  if (zone === 48 || zone === '48' || zone === '48N') {
+    const p = proj4("EPSG:32648", "WGS84", [easting, northing]);
+    return { lat: p[1], lng: p[0], zone: 48 };
+  }
+  
+  // Auto detect zone based on Thailand bounding box
+  try {
+    const p47 = proj4("EPSG:32647", "WGS84", [easting, northing]);
+    const lat47 = p47[1];
+    const lng47 = p47[0];
+    if (lat47 >= 5.5 && lat47 <= 20.5 && lng47 >= 96.0 && lng47 <= 102.0) {
+      return { lat: lat47, lng: lng47, zone: 47 };
+    }
+  } catch(e) {}
+  
+  try {
+    const p48 = proj4("EPSG:32648", "WGS84", [easting, northing]);
+    const lat48 = p48[1];
+    const lng48 = p48[0];
+    if (lat48 >= 5.5 && lat48 <= 20.5 && lng48 >= 102.0 && lng48 <= 108.0) {
+      return { lat: lat48, lng: lng48, zone: 48 };
+    }
+  } catch(e) {}
+  
+  // Default fallback
+  try {
+    const p = proj4("EPSG:32647", "WGS84", [easting, northing]);
+    return { lat: p[1], lng: p[0], zone: 47 };
+  } catch(e) {
+    return { lat: null, lng: null, zone: null };
+  }
+}
+
+function parseRowCoordinates(row, mapping) {
+  let latVal = "";
+  let lngVal = "";
+  let zoneVal = null;
+  
+  const cleanStr = (s) => (s || '').toString().trim().replace(/['"\s]/g, '');
+  
+  if (mapping.lat !== -1) latVal = cleanStr(row[mapping.lat]);
+  if (mapping.lng !== -1) lngVal = cleanStr(row[mapping.lng]);
+  if (mapping.zone !== -1) zoneVal = cleanStr(row[mapping.zone]);
+  
+  // Check if comma-separated lat/lng in a single field
+  if (latVal && !lngVal && latVal.includes(',')) {
+    const parts = latVal.split(',');
+    latVal = cleanStr(parts[0]);
+    lngVal = cleanStr(parts[1]);
+  } else if (lngVal && !latVal && lngVal.includes(',')) {
+    const parts = lngVal.split(',');
+    latVal = cleanStr(parts[0]);
+    lngVal = cleanStr(parts[1]);
+  }
+  
+  if (!latVal && !lngVal) {
+    return { lat: null, lng: null, status: 'invalid', reason: 'ไม่พบข้อมูลพิกัด (ค่าพิกัดว่าง)' };
+  }
+  if (!latVal) {
+    return { lat: null, lng: null, status: 'invalid', reason: 'ไม่พบข้อมูลพิกัด (ละติจูดว่าง)' };
+  }
+  if (!lngVal) {
+    return { lat: null, lng: null, status: 'invalid', reason: 'ไม่พบข้อมูลพิกัด (ลองจิจูดว่าง)' };
+  }
+  
+  let lat = parseFloat(latVal);
+  let lng = parseFloat(lngVal);
+  
+  if (isNaN(lat)) {
+    return { lat: null, lng: null, status: 'invalid', reason: `รูปแบบตัวเลขละติจูดผิด: "${latVal}"` };
+  }
+  if (isNaN(lng)) {
+    return { lat: null, lng: null, status: 'invalid', reason: `รูปแบบตัวเลขลองจิจูดผิด: "${lngVal}"` };
+  }
+  
+  // Detect UTM coordinates (usually large numbers)
+  const isUTM = Math.abs(lat) > 1000 || Math.abs(lng) > 1000;
+  
+  if (isUTM) {
+    let easting = lng;
+    let northing = lat;
+    
+    // Switch if swapped (Easting is around 500,000, Northing is around 1,500,000 in Thailand)
+    if (lat < lng) {
+      easting = lat;
+      northing = lng;
+    }
+    
+    if (easting < 100000 || easting > 900000 || northing < 100000 || northing > 3000000) {
+      return { lat: null, lng: null, status: 'invalid', reason: `ค่า UTM ไม่ถูกต้อง (ไม่อยู่ในช่วงประเทศไทย: E=${easting}, N=${northing})` };
+    }
+    
+    const converted = convertUTMToWGS84(easting, northing, zoneVal);
+    if (!converted.lat || !converted.lng) {
+      return { lat: null, lng: null, status: 'invalid', reason: 'ค่า UTM ไม่ถูกต้อง (แปลงพิกัดพัง)' };
+    }
+    lat = converted.lat;
+    lng = converted.lng;
+  }
+  
+  // Validate Thailand bounds (Lat: 5.5 to 20.5, Lng: 97.0 to 106.0)
+  const isInsideThailand = lat >= 5.5 && lat <= 20.5 && lng >= 97.0 && lng <= 106.0;
+  if (!isInsideThailand) {
+    return { lat, lng, status: 'invalid', reason: `พิกัดอยู่นอกขอบเขตประเทศไทย: Lat=${lat.toFixed(6)}, Lng=${lng.toFixed(6)}` };
+  }
+  
+  return { lat, lng, status: 'valid', reason: '✓ ถูกต้อง' };
+}
+
+function processImport() {
+  const text = document.getElementById('import-text').value;
+  if (!text.trim()) {
+    showToast('ไม่พบเนื้อหาข้อความ กรุณาวางข้อความหรืออัปโหลดไฟล์', 'error');
+    return;
+  }
+
+  const format = detectFormat(text);
+  let parsed = [];
+  let mappingErrors = [];
+
+  if (format === 'csv') {
+    const csvRows = parseCSV(text);
+    if (csvRows.length < 2) {
+      showToast('ไฟล์ข้อมูลแบบตารางต้องมีอย่างน้อย 2 แถว (หัวคอลัมน์ และ ข้อมูล)', 'error');
+      return;
+    }
+    const headers = csvRows[0];
+    const mapping = mapHeaders(headers);
+
+    if (mapping.lat === -1 && mapping.lng === -1) {
+      mappingErrors.push("ไม่พบคอลัมน์พิกัดในไฟล์ (ต้องการ Latitude, Longitude, UTM_N, UTM_E, X, Y)");
+    } else {
+      if (mapping.lat === -1) mappingErrors.push("ไม่พบคอลัมน์พิกัดละติจูด (Latitude/UTM_N/Y)");
+      if (mapping.lng === -1) mappingErrors.push("ไม่พบคอลัมน์พิกัดลองจิจูด (Longitude/UTM_E/X)");
+    }
+
+    for (let i = 1; i < csvRows.length; i++) {
+      const row = csvRows[i];
+      if (row.length === 0 || (row.length === 1 && row[0] === "")) continue;
+
+      // Ensure row matches headers length
+      while (row.length < headers.length) row.push("");
+
+      const nameVal = mapping.name !== -1 ? row[mapping.name].trim() : '';
+      const addressVal = mapping.address !== -1 ? row[mapping.address].trim() : '';
+      const soiVal = mapping.soi !== -1 ? row[mapping.soi].trim() : '';
+      const phoneVal = mapping.phone !== -1 ? row[mapping.phone].trim() : '';
+      const noteVal = mapping.note !== -1 ? row[mapping.note].trim() : '';
+
+      let coordResult;
+      if (mapping.lat === -1 || mapping.lng === -1) {
+        coordResult = { lat: null, lng: null, status: 'invalid', reason: 'ไม่พบหัวคอลัมน์พิกัด' };
+      } else {
+        coordResult = parseRowCoordinates(row, mapping);
+      }
+
+      parsed.push({
+        id: genId(),
+        name: nameVal || 'ไม่ระบุชื่อ',
+        address: addressVal || '',
+        soi: soiVal || '',
+        phone: phoneVal || '',
+        lat: coordResult.lat,
+        lng: coordResult.lng,
+        status: detectStatus(noteVal),
+        note: noteVal,
+        created_at: new Date().toLocaleString('th-TH'),
+        import_status: coordResult.status,
+        import_reason: coordResult.reason,
+        row_num: i + 1
+      });
+    }
+  } else {
+    // Parse LINE Chat History
+    const parsedLine = parseLineExport(text);
+    parsed = parsedLine.map((r, index) => {
+      let status = 'valid';
+      let reason = '✓ ถูกต้อง';
+      if (!r.lat || !r.lng) {
+        status = 'invalid';
+        reason = 'ไม่พบข้อมูลพิกัดในข้อความแชท';
+      } else {
+        const isInside = r.lat >= 5.5 && r.lat <= 20.5 && r.lng >= 97.0 && r.lng <= 106.0;
+        if (!isInside) {
+          status = 'invalid';
+          reason = `พิกัดอยู่นอกประเทศไทย: Lat=${r.lat.toFixed(6)}, Lng=${r.lng.toFixed(6)}`;
+        }
+      }
+      return {
+        ...r,
+        import_status: status,
+        import_reason: reason,
+        row_num: index + 1
+      };
+    });
+  }
+
+  // Debug Log (Requirement 9)
+  parsed.forEach(item => {
+    console.log("LAT =", item.lat);
+    console.log("LNG =", item.lng);
+    console.log("Imported =", item);
+  });
+
+  if (parsed.length === 0) {
+    showToast('วิเคราะห์ข้อมูลสำรวจไม่สำเร็จ (แถวข้อมูลเป็นศูนย์)', 'error');
+    return;
+  }
+
+  // Calculate stats
+  const total = parsed.length;
+  const valid = parsed.filter(p => p.import_status === 'valid').length;
+  const missing = parsed.filter(p => p.import_status === 'invalid' && p.import_reason.includes('ว่าง')).length;
+  const failed = total - valid - missing;
+
+  state.tempImportRecords = parsed;
+
+  // Open the Preview modal overlay
+  renderImportPreviewScreen(total, valid, missing, failed, mappingErrors);
+}
+
+function renderImportPreviewScreen(total, valid, missing, failed, mappingErrors) {
+  const modalContainer = document.getElementById('modal-container');
+  if (!modalContainer) return;
+
+  const first10 = state.tempImportRecords.slice(0, 10);
+  const errorRows = state.tempImportRecords.filter(p => p.import_status !== 'valid');
+
+  let errorsHtml = '';
+  if (mappingErrors.length > 0) {
+    errorsHtml = `
+      <div class="rounded-xl p-3.5 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-sm font-semibold space-y-1">
+        <div class="font-bold flex items-center gap-1">⚠️ ข้อผิดพลาดของโครงสร้างคอลัมน์:</div>
+        ${mappingErrors.map(e => `<div>• ${e}</div>`).join('')}
+      </div>`;
+  } else if (errorRows.length > 0) {
+    errorsHtml = `
+      <div class="rounded-xl p-3.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-400 text-xs space-y-1.5 max-h-[150px] overflow-y-auto">
+        <div class="font-bold text-sm flex items-center gap-1">⚠️ รายการที่มีปัญหาพิกัด (${errorRows.length} รายการ):</div>
+        ${errorRows.map(r => `<div>• แถวที่ ${r.row_num}: บ้านเลขที่/ชื่อ "${r.address || r.name}" - <span class="font-bold text-rose-500">${r.import_reason}</span></div>`).join('')}
+      </div>`;
+  }
+
+  const previewTableHtml = first10.map(r => {
+    let statusClass = "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900";
+    let statusText = "✓ ถูกต้อง";
+    if (r.import_status !== 'valid') {
+      if (r.import_reason.includes('ว่าง')) {
+        statusClass = "text-slate-500 bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800";
+        statusText = "✗ ไม่พบพิกัด";
+      } else {
+        statusClass = "text-rose-500 bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900";
+        statusText = "✗ พิกัดไม่ถูกต้อง";
+      }
+    }
+
+    return `
+      <tr class="border-b border-c text-xs">
+        <td class="py-2.5 px-2 font-medium text-c truncate max-w-[100px]">${esc(r.name)}</td>
+        <td class="py-2.5 px-2 text-c truncate max-w-[100px]">${esc(r.address || '—')}</td>
+        <td class="py-2.5 px-2 font-mono text-c">${r.lat ? r.lat.toFixed(6) : '—'}</td>
+        <td class="py-2.5 px-2 font-mono text-c">${r.lng ? r.lng.toFixed(6) : '—'}</td>
+        <td class="py-2.5 px-2">
+          <span class="px-2 py-0.5 rounded border text-[10px] font-bold ${statusClass}" title="${esc(r.import_reason)}">${statusText}</span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  modalContainer.innerHTML = `
+    <div class="modal-bg animate-fade" onclick="if(event.target===this)closeModal()">
+      <div class="modal-box animate-slide p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-lg text-c">📋 ตรวจสอบก่อนนำเข้าข้อมูล</h3>
+          <button onclick="closeModal()" class="btn btn-ghost p-1.5 rounded-lg" style="min-height:36px; min-width:36px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- Report (Requirement 8) -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-c text-center">
+          <div>
+            <div class="text-[10px] text-c3 font-bold uppercase">ข้อมูลทั้งหมด</div>
+            <div class="text-2xl font-bold font-mono text-c">${total}</div>
+          </div>
+          <div>
+            <div class="text-[10px] text-emerald-500 font-bold uppercase">พิกัดถูกต้อง</div>
+            <div class="text-2xl font-bold font-mono text-emerald-500">${valid}</div>
+          </div>
+          <div>
+            <div class="text-[10px] text-slate-500 font-bold uppercase">ไม่มีพิกัด</div>
+            <div class="text-2xl font-bold font-mono text-slate-500">${missing}</div>
+          </div>
+          <div>
+            <div class="text-[10px] text-rose-500 font-bold uppercase">นำเข้าไม่สำเร็จ</div>
+            <div class="text-2xl font-bold font-mono text-rose-500">${failed}</div>
+          </div>
+        </div>
+
+        <!-- Detailed Warning List (Requirement 10) -->
+        ${errorsHtml}
+
+        <!-- Preview Table (Requirement 6) -->
+        <div class="space-y-1.5">
+          <div class="font-bold text-sm text-c flex justify-between">
+            <span>ตัวอย่างข้อมูล 10 รายการแรก:</span>
+            <span class="text-xs text-c3 font-normal">แสดงคอลัมน์สำคัญ</span>
+          </div>
+          <div class="overflow-x-auto rounded-xl border border-c max-h-[200px]">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 dark:bg-slate-900 text-[10px] text-c3 uppercase tracking-wider font-bold border-b border-c">
+                  <th class="py-2 px-2">ชื่อ</th>
+                  <th class="py-2 px-2">เลขแปลง</th>
+                  <th class="py-2 px-2">Latitude</th>
+                  <th class="py-2 px-2">Longitude</th>
+                  <th class="py-2 px-2">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${previewTableHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex gap-2 justify-end pt-2">
+          <button onclick="closeModal()" class="btn btn-ghost">ยกเลิก</button>
+          <button onclick="confirmImport()" class="btn btn-primary" ${(valid === 0 && missing === 0) ? 'disabled' : ''}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            ยืนยันนำเข้า (${valid + missing} รายการ)
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function confirmImport() {
+  if (!state.tempImportRecords || state.tempImportRecords.length === 0) return;
+
+  const validRecords = state.tempImportRecords.filter(p => p.import_status === 'valid');
+  const missingRecords = state.tempImportRecords.filter(p => p.import_status === 'invalid' && p.import_reason.includes('ว่าง'));
+  
+  const toImport = [...validRecords, ...missingRecords];
+
+  const total = state.tempImportRecords.length;
+  const valid = validRecords.length;
+  const missing = missingRecords.length;
+  const failed = total - valid - missing;
+
+  // Merge records safely (no downgrades)
+  const { added, merged } = mergeRecords(toImport);
+
+  saveRecordsBatchToDB(state.records).then(() => {
+    updateSoiDropdown();
+    renderStats();
+    applyFilters();
+    updateMapMarkers();
+
+    // Close preview modal
+    closeModal();
+
+    // Clear input
+    document.getElementById('import-text').value = '';
+
+    // Final Import toast report (Requirement 8)
+    showToast(`นำเข้าเสร็จสิ้น: ทั้งหมด ${total} | มีพิกัด ${valid} | ไม่มีพิกัด ${missing} | ล้มเหลว ${failed}`, 'success');
+
+    // Focus first valid item on Leaflet map (Requirement 7)
+    if (valid > 0 && state.mapInstance) {
+      const firstValid = validRecords[0];
+      switchTab('map');
+      setTimeout(() => {
+        state.mapInstance.setView([firstValid.lat, firstValid.lng], 17);
+        const marker = state.mapMarkers[firstValid.lat + ',' + firstValid.lng];
+        if (marker) marker.openPopup();
+      }, 100);
+    } else {
+      switchTab('queue');
+    }
+
+    state.tempImportRecords = [];
+  });
+}
+
+
+// ===================== DATA MANAGERS (CSV, BACKUP, SAMPLE) =====================
 function exportCSV() {
-    if (surveyQueue.length === 0) { showToast('ไม่มีข้อมูลให้ Export', 'error'); return; }
-    const header = ['เวลา', 'ผู้ส่ง', 'รายละเอียด', 'URL แผนที่', 'สถานะ'];
-    const rows = surveyQueue.map(i => [
-        i.time, i.sender, i.details, i.mapUrl,
-        i.status === 'done' ? 'สำรวจแล้ว' : 'รอดำเนินการ'
-    ].map(v => `"${(v||'').replace(/"/g,'""')}"`));
-    const csv = '\uFEFF' + [header, ...rows].map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'survey_queue_' + new Date().toLocaleDateString('th-TH').replace(/\//g,'-') + '.csv';
-    a.click();
-    showToast('Export CSV สำเร็จ', 'success');
+  if (!state.records.length) {
+    showToast('ไม่พบข้อมูลแปลงสำรวจในระบบสำหรับส่งออก', 'error');
+    return;
+  }
+  const header = ['ID','ชื่อผู้ส่ง','บ้านเลขที่','ซอย','เบอร์โทร','พิกัดดาวเทียม','ละติจูด','ลองจิจูด','สถานะสำรวจ','หมายเหตุ','วันที่นำเข้า','วันที่สำรวจเสร็จ','ผู้บันทึก','ละติจูด_GPSจริง','ลองจิจูด_GPSจริง','ระยะคลาดเคลื่อนขณะกด(ม.)'];
+  const statusLabel = { pending:'รอสำรวจ', processing:'กำลังสำรวจ', completed:'สำรวจแล้ว' };
+
+  const rows = state.records.map(r => [
+    r.id, r.name, r.address, r.soi, r.phone, r.map_url, r.lat||'', r.lng||'',
+    statusLabel[r.status]||r.status, (r.note||'').replace(/\n/g,' '), r.created_at,
+    r.surveyed_at||'', r.surveyor||'', r.gps_lat||'', r.gps_lng||'', r.distance_when_done||''
+  ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+  
+  const csv = '\uFEFF' + [header.join(','), ...rows].join('\r\n');
+  downloadFile(csv, 'text/csv', 'lineexplore_survey_export.csv');
+  showToast('ส่งออกไฟล์คิวสำรวจ CSV สำเร็จ', 'success');
 }
 
-function saveData() {
-    try { localStorage.setItem('surveyQueue_v2', JSON.stringify(surveyQueue)); } catch(e) {}
+function backupJSON() {
+  if (!state.records.length) {
+    showToast('ไม่พบข้อมูลแปลงสำรวจในระบบสำหรับสำรอง', 'error');
+    return;
+  }
+  const json = JSON.stringify({ version: 2, exported_at: new Date().toISOString(), records: state.records }, null, 2);
+  downloadFile(json, 'application/json', 'lineexplore_backup.json');
+  showToast('สำรองข้อมูลสำรวจเป็น JSON เรียบร้อย', 'success');
 }
+
+function restoreJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      const recs = data.records || data;
+      if (!Array.isArray(recs)) throw new Error('invalid format');
+
+      if (!confirm(`ยืนยันนำเข้าข้อมูลสำรองจำนวน ${recs.length} แปลงสำรวจ? (ระบบจะล้างข้อมูลเดิมและนำเข้ารายการใหม่ทั้งหมด)`)) return;
+      
+      clearAllDBData().then(() => {
+        state.records = recs;
+        return saveRecordsBatchToDB(state.records);
+      }).then(() => {
+        updateSoiDropdown();
+        renderStats();
+        applyFilters();
+        updateMapMarkers();
+        showToast('กู้คืนพิกัดและข้อมูลสำรวจสำเร็จแล้ว', 'success');
+        switchTab('queue');
+      });
+    } catch {
+      showToast('ไฟล์สำรองข้อมูล JSON ผิดรูปแบบ โครงสร้างไม่ถูกต้อง', 'error');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function clearAllData() {
+  if (!confirm('⚠️ คำเตือน: ระบบจะลบข้อมูลคิวและภาพถ่ายทั้งหมดอย่างถาวร ไม่สามารถกู้คืนได้ ยืนยันดำเนินการต่อหรือไม่?')) return;
+  clearAllDBData().then(() => {
+    state.records = [];
+    state.filtered = [];
+    updateSoiDropdown();
+    renderStats();
+    applyFilters();
+    updateMapMarkers();
+    showToast('ล้างฐานข้อมูลระบบเรียบร้อยแล้ว', 'info');
+  });
+}
+
+function downloadFile(content, type, filename) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function generateSampleData() {
+  const startLat = state.userLat || 13.7563;
+  const startLng = state.userLng || 100.5018;
+
+  // Generate 5 dummy records near surveyor coordinates
+  const dummy = [
+    { id: 'd1', name: 'คุณมานพ สมศักดิ์', address: '123/1', soi: 'ซอยสุขุมวิท 1', phone: '0812345678', lat: startLat + 0.0001, lng: startLng + 0.0001, map_url: `https://www.google.com/maps/dir/?api=1&destination=${startLat + 0.0001},${startLng + 0.0001}`, status: 'pending', note: 'รอวัดแนวเขตพื้นที่ชั้นที่ 1', created_at: '05/06/2026 12:00' },
+    { id: 'd2', name: 'สมศรี มีความสุข', address: '99/5', soi: 'ซอยสุขุมวิท 1', phone: '0898765432', lat: startLat + 0.0003, lng: startLng - 0.0002, map_url: `https://www.google.com/maps/dir/?api=1&destination=${startLat + 0.0003},${startLng - 0.0002}`, status: 'pending', note: 'ตรวจสอบการใช้ประโยชน์ที่ดินเชิงเกษตรกรรม', created_at: '05/06/2026 12:15' },
+    { id: 'd3', name: 'นายวันชัย ดวงดี', address: '45/12', soi: 'ซอยสุขุมวิท 2', phone: '0855551234', lat: startLat - 0.0002, lng: startLng + 0.0003, map_url: `https://www.google.com/maps/dir/?api=1&destination=${startLat - 0.0002},${startLng + 0.0003}`, status: 'pending', note: 'อยู่บ้านรอให้ข้อมูลการรังวัดที่ดิน', created_at: '05/06/2026 12:20' },
+    { id: 'd4', name: 'วิชัย รักดี', address: '22', soi: 'ซอยสุขุมวิท 3', phone: '0821239876', lat: startLat + 0.0006, lng: startLng + 0.0005, map_url: `https://www.google.com/maps/dir/?api=1&destination=${startLat + 0.0006},${startLng + 0.0005}`, status: 'pending', note: 'นัดเช้า 9:00น. ตรวจสอบพื้นที่ทับซ้อนทางสาธารณะ', created_at: '05/06/2026 12:30' },
+    { id: 'd5', name: 'สุกัญญา รักชาติ', address: '555/9', soi: 'ซอยสุขุมวิท 3', phone: '0877778888', lat: startLat - 0.0004, lng: startLng - 0.0004, map_url: `https://www.google.com/maps/dir/?api=1&destination=${startLat - 0.0004},${startLng - 0.0004}`, status: 'pending', note: 'แปลงสุดท้ายประเมินภาษีสิ่งปลูกสร้าง', created_at: '05/06/2026 12:45' }
+  ];
+
+  // Merge sample data
+  const { added, merged } = mergeRecords(dummy);
+  saveRecordsBatchToDB(state.records).then(() => {
+    updateSoiDropdown();
+    renderStats();
+    applyFilters();
+    updateMapMarkers();
+    showToast(`สร้างจุดสำรวจทดลองสำเร็จ ${added} รายการใหม่เรียบร้อย`, 'success');
+    switchTab('queue');
+  });
+}
+
+function setStatusFilter(sf) {
+  state.statusFilter = sf;
+  document.querySelectorAll('#status-filters button').forEach(b => {
+    b.classList.toggle('bg-slate-200', b.dataset.sf === sf);
+    b.classList.toggle('dark:bg-slate-800', b.dataset.sf === sf);
+  });
+  applyFilters();
+}
+
+function markAllVisibleDone() {
+  if (!state.filtered.length) {
+    showToast('ไม่มีข้อมูลคิวที่กรองไว้', 'error');
+    return;
+  }
+  
+  if (!confirm(`เปลี่ยนสถานะรายการที่คัดกรองอยู่ทั้งหมด ${state.filtered.length} แปลง เป็น "สำรวจแล้ว" หรือไม่?`)) return;
+
+  state.filtered.forEach(f => {
+    if (f.status !== 'completed') {
+      f.status = 'completed';
+      f.surveyed_at = new Date().toLocaleString('th-TH');
+      f.surveyor = state.surveyorName;
+    }
+  });
+
+  saveRecordsBatchToDB(state.records).then(() => {
+    renderStats();
+    applyFilters();
+    updateMapMarkers();
+    showToast('เปลี่ยนสถานะคิวกรองทั้งหมดเสร็จสมบูรณ์', 'success');
+  });
+}
+
+// ===================== INIT SYSTEM =====================
+function init() {
+  // Load settings
+  document.getElementById('surveyor-name-input').value = state.surveyorName;
+  document.documentElement.classList.toggle('dark', state.darkMode);
+  updateDarkIcon();
+  updateOnlineBadge();
+
+  // Initialize DB and load
+  initDB()
+    .then(() => loadRecordsFromDB())
+    .then(() => {
+      // Set layouts
+      switchTab('queue');
+      updateSoiDropdown();
+      renderStats();
+      applyFilters();
+      
+      // Auto Request GPS on Page Load
+      setupGPS();
+      
+      // Auto Position Matcher & Survey Tracker
+      startAutoSurveyLoop();
+      
+      // Register Service Worker for offline operations
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+          .then(() => console.log('Offline Service Worker Registered!'))
+          .catch(err => console.error('SW Registration Failed', err));
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      showToast('ระบบวิเคราะห์ฐานข้อมูลในเครื่องผิดพลาด', 'error');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
