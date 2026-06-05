@@ -1,2395 +1,2073 @@
 <!DOCTYPE html>
-<html lang="th" class="light">
+<html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>LineExplore — ระบบบริหารคิวสำรวจภาคสนามระดับมืออาชีพ</title>
-<!-- Tailwind CDN -->
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: {
-    extend: {
-      fontFamily: {
-        display: ['Sarabun', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
-      },
-      colors: {
-        brand: { 50:'#f0fdf4',100:'#dcfce7',200:'#bbf7d0',300:'#86efac',400:'#4ade80',500:'#22c55e',600:'#16a34a',700:'#15803d',800:'#166534',900:'#14532d' },
-        amber: { 50:'#fffbeb',100:'#fef3c7',200:'#fde68a',300:'#fcd34d',400:'#fbbf24',500:'#f59e0b',600:'#d97706',700:'#b45309',800:'#92400e',900:'#78350f' },
-        rose: { 50:'#fff1f2',100:'#ffe4e6',200:'#fecdd3',300:'#fda4af',400:'#fb7185',500:'#f43f5e',600:'#e11d48',700:'#be123c',800:'#9f1239',900:'#881337' },
-      }
-    }
-  }
-}
-</script>
-<!-- Fonts & Leaflet -->
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ระบบบริหารคิวสำรวจภาคสนาม | หมู่ 5 เทศบาลชากหมาก</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="https://unpkg.com/proj4@2.11.0/dist/proj4.js"></script>
-
 <style>
-  :root {
-    --bg: #f8fafc;
-    --surface: #ffffff;
-    --surface2: #f1f5f9;
-    --border: #e2e8f0;
-    --text: #0f172a;
-    --text2: #475569;
-    --text3: #94a3b8;
-    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
-    --shadow-md: 0 4px 6px -1px rgba(0,0,0,.07), 0 2px 4px -1px rgba(0,0,0,.05);
-    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.08), 0 4px 6px -2px rgba(0,0,0,.04);
-  }
-  .dark {
-    --bg: #0b0f17;
-    --surface: #121824;
-    --surface2: #1e293b;
-    --border: #334155;
-    --text: #f8fafc;
-    --text2: #94a3b8;
-    --text3: #64748b;
-    --shadow: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
-    --shadow-md: 0 4px 6px -1px rgba(0,0,0,.25), 0 2px 4px -1px rgba(0,0,0,.15);
-    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.3), 0 4px 6px -2px rgba(0,0,0,.15);
-  }
-  * { font-family: 'Sarabun', sans-serif; }
-  body { background: var(--bg); color: var(--text); transition: background .2s, color .2s; }
-  .card { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
-  .card-hover:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); transition: all .15s; }
-  .surface2 { background: var(--surface2); }
-  .border-c { border-color: var(--border); }
-  .text-c { color: var(--text); }
-  .text-c2 { color: var(--text2); }
-  .text-c3 { color: var(--text3); }
-
-  /* Drag drop zone */
-  .drop-zone { border: 2px dashed var(--border); transition: all .2s; }
-  .drop-zone.dragging { border-color: #22c55e; background: rgba(34,197,94,.06); }
-
-  /* Status badges */
-  .badge-pending { background:#fee2e2; color:#dc2626; border: 1px solid #fca5a5; }
-  .dark .badge-pending { background:rgba(220,38,38,.2); color:#fca5a5; border: 1px solid rgba(220,38,38,0.4); }
-  .badge-processing { background:#fef3c7; color:#d97706; border: 1px solid #fcd34d; }
-  .dark .badge-processing { background:rgba(217,119,6,.2); color:#fcd34d; border: 1px solid rgba(217,119,6,0.4); }
-  .badge-completed { background:#dcfce7; color:#16a34a; border: 1px solid #86efac; }
-  .dark .badge-completed { background:rgba(22,163,74,.2); color:#4ade80; border: 1px solid rgba(22,163,74,0.4); }
-
-  /* Progress bar */
-  .progress-track { background: var(--surface2); border-radius: 999px; overflow:hidden; }
-  .progress-fill { background: linear-gradient(90deg,#22c55e,#16a34a); border-radius:999px; transition: width .6s cubic-bezier(.4,0,.2,1); }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-  /* Animations */
-  @keyframes slideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-  @keyframes pulse-dot { 0%,100%{opacity:1; transform:scale(1);} 50%{opacity:.4; transform:scale(1.1);} }
-  .animate-slide { animation: slideIn .25s ease both; }
-  .animate-fade { animation: fadeIn .2s ease both; }
-  .pulse-dot { animation: pulse-dot 1.5s ease infinite; }
-
-  /* Toast */
-  #toast { position:fixed; bottom:5rem; right:1.5rem; z-index:9999; display:flex; flex-direction:column; gap:.5rem; pointer-events:none; }
-  .toast-item { background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow-lg); padding:.75rem 1.25rem; border-radius:.75rem; font-size:.875rem; color:var(--text); animation: slideIn .2s ease both; pointer-events:all; display:flex; align-items:center; gap:.5rem; min-width:260px; max-width:360px; }
-
-  /* Modal */
-  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:1000; display:flex; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(3px); }
-  .modal-box { background:var(--surface); border:1px solid var(--border); border-radius:1rem; max-width:540px; width:100%; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-lg); }
-
-  /* Highlight search */
-  mark { background:rgba(251,191,36,.35); color:inherit; border-radius:2px; padding:0 2px; }
-
-  /* Tab active styling */
-  .tab-active { color: #22c55e; border-color: #22c55e; font-weight: bold; }
-  
-  /* Inputs */
-  input.fi, select.fi, textarea.fi {
-    background:var(--surface2); border:1px solid var(--border); color:var(--text);
-    border-radius:.5rem; padding:.65rem .75rem; width:100%; font-size:1rem;
-    transition: border-color .15s, box-shadow .15s;
-  }
-  input.fi:focus, select.fi:focus, textarea.fi:focus {
-    outline:none; border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.15);
-  }
-
-  /* Buttons */
-  .btn { display:inline-flex; align-items:center; justify-content:center; gap:.4rem; padding:.75rem 1.25rem; border-radius:.75rem; font-size:.95rem; font-weight:600; cursor:pointer; transition: all .15s; border:none; min-height:44px; min-width:44px; }
-  .btn:active { transform:scale(.95); }
-  .btn-primary { background:#22c55e; color:#fff; }
-  .btn-primary:hover { background:#16a34a; }
-  .btn-ghost { background:transparent; color:var(--text2); border:1px solid var(--border); }
-  .btn-ghost:hover { background:var(--surface2); color:var(--text); }
-  .btn-danger { background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; }
-  .dark .btn-danger { background:rgba(220,38,38,.2); color:#fca5a5; border:1px solid rgba(220,38,38,0.3); }
-  .btn-danger:hover { background:#fecaca; }
-
-  /* Card status border */
-  .card-pending { border-left: 5px solid #ef4444; }
-  .card-processing { border-left: 5px solid #f59e0b; }
-  .card-completed { border-left: 5px solid #22c55e; }
-
-  /* Map sizing */
-  #map { height: calc(100vh - 170px); width: 100%; border-radius: 1rem; border: 1px solid var(--border); }
-  @media (max-width: 640px) {
-    #map { height: calc(100vh - 210px); }
-  }
+:root {
+  --bg: #0d1117;
+  --bg2: #161b22;
+  --bg3: #21262d;
+  --bg4: #30363d;
+  --border: #30363d;
+  --border2: #3d444d;
+  --text: #e6edf3;
+  --text2: #9198a1;
+  --text3: #636e7b;
+  --accent: #1f6feb;
+  --accent2: #388bfd;
+  --green: #238636;
+  --green2: #2ea043;
+  --green-bg: #0d2119;
+  --green-text: #3fb950;
+  --yellow: #9e6a03;
+  --yellow2: #d29922;
+  --yellow-bg: #2d1f02;
+  --yellow-text: #e3b341;
+  --red: #da3633;
+  --red2: #f85149;
+  --red-bg: #2d0f0e;
+  --red-text: #ff7b72;
+  --blue-bg: #0c2d6b;
+  --radius: 8px;
+  --radius2: 12px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+[data-theme="light"] {
+  --bg: #f5f8fa;
+  --bg2: #ffffff;
+  --bg3: #f0f4f8;
+  --bg4: #e2e8f0;
+  --border: #d1d9e0;
+  --border2: #c5ced6;
+  --text: #1a2332;
+  --text2: #57606a;
+  --text3: #8c949e;
+  --accent: #0969da;
+  --accent2: #218bff;
+  --green-bg: #dafbe1;
+  --green-text: #1a7f37;
+  --yellow-bg: #fff8c5;
+  --yellow-text: #9a6700;
+  --red-bg: #ffebe9;
+  --red-text: #cf222e;
+  --blue-bg: #ddf4ff;
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  font-family: 'Sarabun', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+/* ===== HEADER ===== */
+.header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; gap: 12px;
+}
+.header-logo { font-size: 22px; }
+.header-title { flex: 1; }
+.header-title h1 { font-size: 15px; font-weight: 700; line-height: 1.2; }
+.header-title p { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.btn-icon {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+.btn-icon:hover { background: var(--bg4); color: var(--text); }
+/* ===== TABS ===== */
+.tabs {
+  display: flex;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 0;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex: none;
+  padding: 10px 16px;
+  font-size: 13px; font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.2s;
+  font-family: 'Sarabun', sans-serif;
+  background: none; border-top: none; border-left: none; border-right: none;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+/* ===== MAIN ===== */
+.main { padding: 16px; max-width: 1200px; margin: 0 auto; }
+/* ===== DASHBOARD ===== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px; margin-bottom: 16px;
+}
+@media(min-width:600px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+@media(min-width:900px) { .stats-grid { grid-template-columns: repeat(6, 1fr); } }
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 14px;
+  transition: border-color 0.2s;
+}
+.stat-card:hover { border-color: var(--border2); }
+.stat-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-val { font-size: 28px; font-weight: 700; line-height: 1.2; margin: 4px 0; font-family: 'IBM Plex Mono', monospace; }
+.stat-sub { font-size: 11px; color: var(--text3); }
+.stat-total .stat-val { color: var(--accent2); }
+.stat-done .stat-val { color: var(--green-text); }
+.stat-pending .stat-val { color: var(--red-text); }
+.stat-progress .stat-val { color: var(--yellow-text); }
+.progress-bar-wrap { background: var(--bg3); border-radius: 4px; height: 6px; margin-top: 8px; overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--green2), var(--accent2)); transition: width 0.6s ease; }
+/* ===== UPLOAD ===== */
+.upload-zone {
+  border: 2px dashed var(--border2);
+  border-radius: var(--radius2);
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: var(--bg2);
+  margin-bottom: 16px;
+}
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent2); background: var(--blue-bg); }
+.upload-icon { font-size: 36px; margin-bottom: 8px; }
+.upload-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.upload-sub { font-size: 13px; color: var(--text3); }
+#fileInput { display: none; }
+/* ===== SEARCH/FILTER ===== */
+.toolbar {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 12px; align-items: center;
+}
+.search-wrap { flex: 1; min-width: 160px; position: relative; }
+.search-wrap input {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 12px 8px 36px;
+  font-size: 13px;
+  font-family: 'Sarabun', sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-wrap input:focus { border-color: var(--accent); }
+.search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 14px; }
+select.filter-select {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: 'Sarabun', sans-serif;
+  outline: none;
+  cursor: pointer;
+}
+.btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-family: 'Sarabun', sans-serif;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent2); }
+.btn-success { background: var(--green2); color: white; border-color: var(--green2); }
+.btn-success:hover { background: var(--green); }
+.btn-ghost { background: var(--bg3); color: var(--text2); border-color: var(--border); }
+.btn-ghost:hover { background: var(--bg4); color: var(--text); }
+/* ===== TABLE ===== */
+.table-wrap { overflow-x: auto; border-radius: var(--radius2); border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { background: var(--bg3); position: sticky; top: 0; }
+th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text2);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg3); }
+.row-done td { background: rgba(35,134,54,0.05); }
+.row-inprogress td { background: rgba(158,106,3,0.05); }
+/* ===== STATUS BADGES ===== */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.badge-pending { background: var(--red-bg); color: var(--red-text); }
+.badge-inprogress { background: var(--yellow-bg); color: var(--yellow-text); }
+.badge-done { background: var(--green-bg); color: var(--green-text); }
+/* ===== STATUS SELECT ===== */
+.status-sel {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: 'Sarabun', sans-serif;
+  cursor: pointer;
+  outline: none;
+}
+/* ===== MAP BUTTONS ===== */
+.map-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.btn-sm {
+  padding: 4px 8px; border-radius: 6px; font-size: 11px;
+  font-weight: 500; cursor: pointer; border: 1px solid var(--border);
+  background: var(--bg3); color: var(--text2);
+  font-family: 'Sarabun', sans-serif;
+  transition: all 0.2s; white-space: nowrap;
+}
+.btn-sm:hover { background: var(--bg4); color: var(--text); }
+.btn-sm.map { border-color: #1d63a0; background: rgba(29,99,160,0.15); color: #60b4f8; }
+.btn-sm.copy { border-color: var(--border2); }
+/* ===== NOTE ===== */
+.note-text { color: var(--text2); font-size: 12px; max-width: 160px; line-height: 1.4; }
+/* ===== CARD (mobile) ===== */
+.card-list { display: flex; flex-direction: column; gap: 10px; }
+.survey-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 14px;
+  transition: border-color 0.2s;
+}
+.survey-card.done { border-color: var(--green2); }
+.survey-card.inprogress { border-color: var(--yellow2); }
+.card-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.card-num { font-size: 11px; color: var(--text3); font-family: 'IBM Plex Mono', monospace; }
+.card-name { font-weight: 600; font-size: 14px; flex: 1; }
+.card-body { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; font-size: 12px; }
+.card-field label { color: var(--text3); display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+.card-field span { color: var(--text); }
+.card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn-big {
+  flex: 1; min-width: 80px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; border: 1px solid var(--border);
+  background: var(--bg3); color: var(--text);
+  font-family: 'Sarabun', sans-serif;
+  text-align: center;
+  transition: all 0.2s;
+}
+.btn-big:active { transform: scale(0.97); }
+.btn-big.map { background: rgba(29,99,160,0.2); border-color: #1d63a0; color: #60b4f8; }
+.btn-big.done { background: var(--green-bg); border-color: var(--green2); color: var(--green-text); }
+.btn-big.inprog { background: var(--yellow-bg); border-color: var(--yellow2); color: var(--yellow-text); }
+/* ===== EMPTY STATE ===== */
+.empty {
+  text-align: center; padding: 60px 20px;
+  color: var(--text3);
+}
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty h3 { font-size: 16px; color: var(--text2); margin-bottom: 6px; }
+/* ===== PANEL ===== */
+.panel { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius2); padding: 16px; margin-bottom: 16px; }
+.panel-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+/* ===== TOAST ===== */
+.toast-wrap { position: fixed; bottom: 20px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  animation: slideIn 0.3s ease, fadeOut 0.4s ease 2.6s forwards;
+  max-width: 280px;
+}
+@keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; transform: translateY(10px); } }
+/* ===== LOADING ===== */
+.loading { text-align: center; padding: 40px; color: var(--text3); }
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--bg4);
+  border-top-color: var(--accent2);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+/* ===== MODAL ===== */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 200; display: none; align-items: flex-end;
+  padding: 0;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg2);
+  border-radius: 16px 16px 0 0;
+  width: 100%; max-height: 90vh;
+  overflow-y: auto; padding: 20px;
+  border: 1px solid var(--border);
+}
+@media(min-width:600px){
+  .modal-overlay { align-items: center; justify-content: center; padding: 20px; }
+  .modal { border-radius: 16px; max-width: 480px; }
+}
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+.modal-close { cursor: pointer; color: var(--text3); font-size: 20px; }
+/* ===== FORM ===== */
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; font-weight: 500; }
+.form-group input, .form-group textarea, .form-group select {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text); border-radius: 8px; padding: 10px 12px;
+  font-size: 14px; font-family: 'Sarabun', sans-serif;
+  outline: none; transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group textarea:focus { border-color: var(--accent); }
+.form-group textarea { resize: vertical; min-height: 80px; }
+/* ===== REPORT ===== */
+.report-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.report-row:last-child { border-bottom: none; }
+.soi-chip {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  background: var(--bg4); color: var(--text2);
+  font-size: 12px; margin: 3px;
+  cursor: pointer; border: 1px solid transparent;
+  transition: all 0.2s;
+}
+.soi-chip:hover, .soi-chip.active { background: var(--blue-bg); color: var(--accent2); border-color: var(--accent); }
+/* ===== RESPONSIVE ===== */
+@media(max-width:599px){
+  .desktop-only { display: none !important; }
+}
+@media(min-width:600px){
+  .mobile-only { display: none !important; }
+}
+.count-badge {
+  background: var(--bg4); color: var(--text3);
+  font-size: 10px; padding: 1px 6px; border-radius: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+/* ===== MAP CONTAINER & GPS PULSE ===== */
+#map {
+  height: 550px;
+  width: 100%;
+  border-radius: var(--radius2);
+  border: 1px solid var(--border);
+  margin-top: 10px;
+  z-index: 1;
+}
+.surveyor-gps-marker {
+  position: relative;
+}
+.gps-pulse-core {
+  width: 12px;
+  height: 12px;
+  background: #218bff;
+  border: 2px solid white;
+  border-radius: 50%;
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  box-shadow: 0 0 8px rgba(33, 139, 255, 0.8);
+}
+.gps-pulse-ring {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(33, 139, 255, 0.4);
+  border-radius: 50%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  animation: gpsPulse 2s infinite ease-out;
+}
+@keyframes gpsPulse {
+  0% { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+/* ===== COMPACT ACTIONS GRID ===== */
+.card-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+.btn-big:disabled, .btn-sm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 </style>
 </head>
-<body class="min-h-screen pb-24">
+<body>
 
-<!-- Toast -->
-<div id="toast"></div>
+<div class="header">
+  <div class="header-logo">🗺️</div>
+  <div class="header-title">
+    <h1>ระบบบริหารคิวสำรวจภาคสนาม</h1>
+    <p>หมู่ 5 เทศบาลชากหมาก · ต.สำนักท้อน</p>
+  </div>
+  <div class="header-actions">
+    <div id="gpsStatus" style="font-size: 11px; padding: 6px 10px; border-radius: 8px; background: var(--bg3); display: flex; align-items: center; gap: 6px; color: var(--text2); font-weight: 500;">
+      📡 <span id="gpsText">ค้นหา GPS...</span>
+    </div>
+    <div id="syncStatus" style="font-size: 11px; padding: 6px 10px; border-radius: 8px; background: var(--bg3); display: flex; align-items: center; gap: 6px; color: var(--green-text); font-weight: 500;">
+      🟢 Online
+    </div>
+    <button class="btn-icon" id="themeToggle" title="สลับธีม">🌙</button>
+    <button class="btn-icon" id="addBtn" title="เพิ่มรายการ">➕</button>
+    <button class="btn-icon" id="exportMenuBtn" title="ส่งออก">⬇️</button>
+  </div>
+</div>
 
-<!-- Modals -->
-<div id="modal-container"></div>
+<div class="tabs">
+  <button class="tab active" data-tab="dashboard">📊 ภาพรวม</button>
+  <button class="tab" data-tab="list">📋 รายการ</button>
+  <button class="tab" data-tab="map">🗺️ แผนที่</button>
+  <button class="tab" data-tab="upload">📤 นำเข้า</button>
+  <button class="tab" data-tab="report">📄 รายงาน</button>
+</div>
 
-<!-- Header -->
-<header class="sticky top-0 z-50 card border-b border-c shadow-sm" style="border-radius:0;">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center flex-shrink-0 shadow-md">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+<div class="main">
+  <!-- DASHBOARD TAB -->
+  <div id="tab-dashboard">
+    <div class="stats-grid">
+      <div class="stat-card stat-total">
+        <div class="stat-label">ทั้งหมด</div>
+        <div class="stat-val" id="statTotal">0</div>
+        <div class="stat-sub">รายการสำรวจ</div>
       </div>
-      <div>
-        <div class="font-bold text-base leading-tight text-c flex items-center gap-1.5">
-          LineExplore 
-          <span id="connection-badge" class="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-emerald-500 text-white flex items-center gap-1">
-            <span class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></span> ออนไลน์
-          </span>
-        </div>
-        <div class="text-xs text-c3 font-mono">ระบบจัดการและติดตามคิวสำรวจภาคสนาม</div>
+      <div class="stat-card stat-done">
+        <div class="stat-label">สำรวจแล้ว</div>
+        <div class="stat-val" id="statDone">0</div>
+        <div class="stat-sub">รายการ</div>
+      </div>
+      <div class="stat-card stat-pending">
+        <div class="stat-label">เหลือสำรวจ</div>
+        <div class="stat-val" id="statPending">0</div>
+        <div class="stat-sub">รายการ</div>
+      </div>
+      <div class="stat-card stat-progress">
+        <div class="stat-label">กำลังสำรวจ</div>
+        <div class="stat-val" id="statInprogress">0</div>
+        <div class="stat-sub">รายการ</div>
+      </div>
+      <div class="stat-card stat-near" style="border-color: var(--yellow2);">
+        <div class="stat-label" style="color: var(--yellow-text)">อยู่ใกล้จุด (&lt;50 ม.)</div>
+        <div class="stat-val" id="statNear" style="color: var(--yellow-text)">0</div>
+        <div class="stat-sub">รายการรอบตัว</div>
+      </div>
+      <div class="stat-card stat-success-pct" style="border-color: var(--green2);">
+        <div class="stat-label" style="color: var(--green-text)">ความสำเร็จ</div>
+        <div class="stat-val" id="statPercent" style="color: var(--green-text)">0%</div>
+        <div class="stat-sub">ความคืบหน้า</div>
+        <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
       </div>
     </div>
 
-    <!-- Active GPS Display in Header -->
-    <div id="header-gps-status" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-600 dark:text-emerald-400 font-mono">
-      <div class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse flex-shrink-0"></div>
-      <span id="header-gps-text">GPS: กำลังค้นหา...</span>
+    <div class="panel">
+      <div class="panel-title">👤 ข้อมูลผู้สำรวจ</div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>ชื่อผู้สำรวจ (จะถูกบันทึกในระบบประวัติการสำรวจ)</label>
+        <input type="text" id="surveyorName" placeholder="ระบุชื่อผู้สำรวจ..." style="max-width:300px; display:inline-block;" value="ผู้สำรวจภาคสนาม">
+      </div>
     </div>
 
-    <div class="flex items-center gap-2">
-      <button onclick="toggleDark()" id="dark-btn" class="btn btn-ghost p-2 rounded-lg" style="min-height:38px; min-width:38px; padding:0.5rem">
-        <svg id="dark-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      </button>
+    <div class="panel">
+      <div class="panel-title">🏘️ กรองตามซอย</div>
+      <div id="soiChips" style="line-height:2.2"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">⚡ รายการที่ต้องดำเนินการ</div>
+      <div id="quickList" class="card-list"></div>
     </div>
   </div>
-</header>
 
-<!-- Main Container -->
-<main class="max-w-7xl mx-auto px-3 py-4">
+  <!-- MAP TAB -->
+  <div id="tab-map" style="display:none">
+    <div class="panel">
+      <div class="panel-title">🗺️ แผนที่คิวสำรวจภาคสนาม</div>
+      <div style="font-size: 13px; color: var(--text2); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <span>แสดงจุดสำรวจและพิกัดผู้สำรวจ: 🟢 สำรวจแล้ว · 🔴 รอสำรวจ · 🟡 กำลังสำรวจ</span>
+        <button class="btn btn-primary" onclick="centerMapOnSurveyor()" style="font-size: 12px; padding: 6px 12px; border-radius: 6px;">📍 ค้นหาตัวฉันบนแผนที่</button>
+      </div>
+      <div id="map"></div>
+    </div>
+  </div>
 
-  <!-- ================= TAB: DASHBOARD ================= -->
-  <section id="content-dashboard" class="space-y-4 hidden">
-    <!-- GPS HUD for Mobile -->
-    <div class="card rounded-2xl p-4 space-y-3 bg-gradient-to-br from-brand-50 to-white dark:from-slate-900 dark:to-slate-950 border border-brand-100 dark:border-brand-900/50">
-      <div class="flex items-center justify-between">
-        <h3 class="font-bold text-base text-c flex items-center gap-1.5">
-          📡 ระบบ GPS ปัจจุบันของผู้สำรวจ
-        </h3>
-        <span id="gps-hud-badge" class="text-xs px-2 py-0.5 rounded-full font-bold bg-rose-500 text-white">ปิดใช้งาน</span>
+  <!-- LIST TAB -->
+  <div id="tab-list" style="display:none">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="ค้นหาชื่อ บ้านเลขที่ ซอย เบอร์...">
       </div>
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm font-mono">
-        <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-c">
-          <span class="text-xs text-c3">ละติจูด (Latitude)</span>
-          <div id="gps-hud-lat" class="font-bold text-c mt-0.5">—</div>
-        </div>
-        <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-c">
-          <span class="text-xs text-c3">ลองจิจูด (Longitude)</span>
-          <div id="gps-hud-lng" class="font-bold text-c mt-0.5">—</div>
-        </div>
-        <div class="col-span-2 md:col-span-1 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-c">
-          <span class="text-xs text-c3">ความแม่นยำ (Accuracy)</span>
-          <div id="gps-hud-acc" class="font-bold text-c mt-0.5 text-rose-500">—</div>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <input type="text" id="surveyor-name-input" class="fi max-w-[200px]" placeholder="ชื่อผู้สำรวจ" oninput="updateSurveyorName(this.value)">
-        <span class="text-xs text-c2">ชื่อผู้บันทึกข้อมูลขณะสำรวจสำเร็จ</span>
-      </div>
+      <select class="filter-select" id="filterStatus">
+        <option value="">ทุกสถานะ</option>
+        <option value="pending">รอสำรวจ</option>
+        <option value="inprogress">กำลังสำรวจ</option>
+        <option value="done">สำรวจแล้ว</option>
+      </select>
+      <select class="filter-select" id="filterSoi">
+        <option value="">ทุกซอย</option>
+      </select>
+      <button class="btn btn-success desktop-only" id="markAllDoneBtn">✅ Mark All Done</button>
     </div>
 
-    <!-- Dashboard counters -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" id="dashboard-counters">
-      <!-- Generated by JS -->
+    <div id="resultCount" style="font-size:12px;color:var(--text3);margin-bottom:10px"></div>
+
+    <!-- Desktop Table -->
+    <div class="table-wrap desktop-only" id="tableWrap">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>ชื่อ / เจ้าของ</th>
+            <th>บ้านเลขที่</th>
+            <th>ซอย</th>
+            <th>เบอร์โทร</th>
+            <th>ระยะห่าง</th>
+            <th>หมายเหตุ</th>
+            <th>การจัดการคิวสำรวจ</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
     </div>
 
-    <!-- Success progress bar -->
-    <div class="card rounded-2xl p-5 space-y-3" id="success-progress-card">
-      <!-- Generated by JS -->
-    </div>
-  </section>
+    <!-- Mobile Cards -->
+    <div class="card-list mobile-only" id="cardList"></div>
+  </div>
 
-  <!-- ================= TAB: QUEUE LIST ================= -->
-  <section id="content-queue" class="space-y-4">
-    <!-- Toolbar -->
-    <div class="card rounded-2xl p-4 space-y-3">
-      <!-- Search input -->
-      <div class="relative">
-        <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 text-c3" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="search-input" class="fi pl-10" type="text" placeholder="ค้นหาชื่อผู้ส่ง, บ้านเลขที่, ซอย, พิกัด..." oninput="applyFilters()">
-      </div>
-      
-      <!-- Filters Row -->
-      <div class="flex flex-wrap gap-2 items-center">
-        <!-- Status buttons -->
-        <div id="status-filters" class="flex gap-1.5 overflow-x-auto pb-1 max-w-full no-select">
-          <button onclick="setStatusFilter('all')" data-sf="all" class="btn btn-ghost text-xs py-1.5 px-3 whitespace-nowrap bg-white dark:bg-slate-900">ทั้งหมด</button>
-          <button onclick="setStatusFilter('pending')" data-sf="pending" class="btn btn-ghost text-xs py-1.5 px-3 whitespace-nowrap bg-white dark:bg-slate-900 border-rose-400">🔴 รอสำรวจ</button>
-          <button onclick="setStatusFilter('processing')" data-sf="processing" class="btn btn-ghost text-xs py-1.5 px-3 whitespace-nowrap bg-white dark:bg-slate-900 border-amber-400">🟡 กำลังสำรวจ</button>
-          <button onclick="setStatusFilter('completed')" data-sf="completed" class="btn btn-ghost text-xs py-1.5 px-3 whitespace-nowrap bg-white dark:bg-slate-900 border-brand-400">🟢 สำรวจแล้ว</button>
-        </div>
-
-        <div class="flex flex-wrap gap-2 w-full sm:w-auto sm:ml-auto">
-          <!-- Soi filter -->
-          <select id="soi-filter" class="fi text-sm py-1.5 px-2.5 w-full sm:w-auto" onchange="applyFilters()">
-            <option value="">ซอย: ทั้งหมด</option>
-          </select>
-          <!-- Distance filter -->
-          <select id="distance-filter" class="fi text-sm py-1.5 px-2.5 w-full sm:w-auto" onchange="applyFilters()">
-            <option value="all">ระยะห่าง: ทั้งหมด</option>
-            <option value="near">🟢 ถึงจุดแล้ว (≤ 20 ม.)</option>
-            <option value="mid">🟡 ใกล้ถึง (20 - 50 ม.)</option>
-            <option value="far">🔴 ไกล (> 50 ม.)</option>
-          </select>
-        </div>
-      </div>
+  <!-- UPLOAD TAB -->
+  <div id="tab-upload" style="display:none">
+    <div class="upload-zone" id="uploadZone">
+      <div class="upload-icon">📁</div>
+      <div class="upload-title">อัปโหลดไฟล์ LINE Export</div>
+      <div class="upload-sub">ลากไฟล์ .txt มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</div>
+      <input type="file" id="fileInput" accept=".txt">
     </div>
 
-    <!-- Active List Controls & Count -->
-    <div class="flex items-center justify-between text-sm px-1 text-c2">
-      <div id="result-count" class="font-semibold"></div>
-      <button onclick="markAllVisibleDone()" class="text-brand-600 font-bold hover:underline">
-        ✓ เปลี่ยนข้อมูลที่กรองอยู่ทั้งหมดเป็น 'สำรวจแล้ว'
-      </button>
+    <div class="panel" id="parseStatus" style="display:none">
+      <div class="panel-title">📊 ผลการวิเคราะห์</div>
+      <div id="parseResult"></div>
     </div>
 
-    <!-- List container -->
-    <section id="list-section" class="space-y-3"></section>
-
-    <!-- Empty state -->
-    <div id="empty-state" class="hidden text-center py-16 space-y-4">
-      <div class="w-20 h-20 mx-auto rounded-3xl bg-brand-50 dark:bg-brand-900/10 flex items-center justify-center">
-        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <div class="panel">
+      <div class="panel-title">💾 สำรองข้อมูล</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn btn-ghost" onclick="exportCSV()">📊 Export CSV</button>
+        <button class="btn btn-ghost" onclick="exportJSON()">📦 Export JSON</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('importInput').click()">📥 Import JSON</button>
+        <button class="btn btn-ghost" onclick="restoreLatestBackup()" style="color:var(--yellow-text)">⏪ กู้คืน Backup ล่าสุด</button>
+        <button class="btn btn-ghost" onclick="showBackupList()">🗂️ ดู Backup ทั้งหมด</button>
+        <button class="btn btn-ghost" onclick="clearAll()" style="color:var(--red-text)">🗑️ ล้างข้อมูลทั้งหมด</button>
       </div>
-      <div>
-        <p class="font-bold text-lg text-c">ไม่พบข้อมูลแปลงสำรวจ</p>
-        <p class="text-sm text-c3 mt-1">กรุณานำเข้าข้อมูลจากห้องแชท LINE ในเมนูตั้งค่า</p>
+      <div id="backupListPanel" style="display:none"></div>
+      <input type="file" id="importInput" accept=".json" style="display:none">
+    </div>
+  </div>
+
+  <!-- REPORT TAB -->
+  <div id="tab-report" style="display:none">
+    <div class="panel">
+      <div class="panel-title">📈 สรุปงานประจำวัน · <span id="reportDate"></span></div>
+      <div id="reportContent"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">📋 รายชื่อที่ยังไม่ได้สำรวจ</div>
+      <div id="pendingList"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-primary" onclick="printReport()">🖨️ พิมพ์รายงาน</button>
+      <button class="btn btn-ghost" onclick="exportCSV()">📊 Export CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADD/EDIT -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modalTitle">เพิ่มรายการ</span>
+      <span class="modal-close" onclick="closeModal()">✕</span>
+    </div>
+    <div class="form-group"><label>ชื่อ / เจ้าของบ้าน</label><input id="fName" placeholder="นายสมชาย..."></div>
+    <div class="form-group"><label>บ้านเลขที่</label><input id="fAddress" placeholder="199/55"></div>
+    <div class="form-group"><label>ซอย</label><input id="fSoi" placeholder="จริงใจ 1"></div>
+    <div class="form-group"><label>เบอร์โทร</label><input id="fPhone" placeholder="0812345678" inputmode="tel"></div>
+    <div class="form-group"><label>ลิงก์แผนที่ (Google Maps)</label><input id="fMapUrl" placeholder="https://maps.google.com/..."></div>
+    <div class="form-group">
+      <label>lat, lng (พิกัด)</label>
+      <div style="display:flex;gap:8px">
+        <input id="fLat" placeholder="lat" inputmode="decimal" style="flex:1">
+        <input id="fLng" placeholder="lng" inputmode="decimal" style="flex:1">
       </div>
     </div>
-  </section>
-
-  <!-- ================= TAB: LEAFLET MAP ================= -->
-  <section id="content-map" class="space-y-3 hidden relative">
-    <div id="map"></div>
-    <div class="absolute bottom-6 left-6 z-[1000] flex flex-col gap-2">
-      <button onclick="centerMapOnUser()" class="btn btn-primary shadow-lg p-3 rounded-full flex items-center justify-center" title="ไปยังพิกัดปัจจุบัน">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M4 12H2M22 12h-4"/></svg>
-      </button>
+    <div class="form-group"><label>หมายเหตุ</label><textarea id="fNote" placeholder="รออยู่บ้าน..."></textarea></div>
+    <div class="form-group">
+      <label>สถานะ</label>
+      <select id="fStatus">
+        <option value="pending">รอสำรวจ</option>
+        <option value="inprogress">กำลังสำรวจ</option>
+        <option value="done">สำรวจแล้ว</option>
+      </select>
     </div>
-  </section>
-
-  <!-- ================= TAB: DATA & SETTINGS ================= -->
-  <section id="content-settings" class="space-y-4 hidden">
-    <!-- Import File/Text -->
-    <div class="card rounded-2xl p-6 space-y-4">
-      <h3 class="font-bold text-lg text-c">📥 นำเข้าข้อมูลระบบสำรวจ (LINE Chat / CSV / Tabular Files)</h3>
-      
-      <!-- Drop zone -->
-      <div id="import-drop" class="drop-zone rounded-2xl p-8 text-center cursor-pointer bg-slate-50 dark:bg-slate-900/50 hover:bg-brand-50/10" 
-        onclick="document.getElementById('import-file-input').click()"
-        ondragover="event.preventDefault();this.classList.add('dragging')"
-        ondragleave="this.classList.remove('dragging')"
-        ondrop="handleFileDrop(event)">
-        <div class="w-14 h-14 mx-auto rounded-2xl bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center mb-3 shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        </div>
-        <p class="font-semibold text-c text-base">ลากไฟล์ประวัติแชท .txt หรือไฟล์ตาราง .csv มาวางที่นี่ หรือคลิกเพื่อค้นหา</p>
-        <p class="text-xs text-c3 mt-1.5">รองรับไฟล์ LINE Chat Export (.txt) และไฟล์ตารางพิกัด (.csv, .txt แบบคั่นด้วยคอมมา/แท็บ)</p>
-        <input id="import-file-input" type="file" accept=".txt,.csv" class="hidden" onchange="handleFileSelect(event)">
-      </div>
-
-      <div>
-        <label class="fl block mb-1">หรือวางข้อความแชท LINE ที่คัดลอกมาโดยตรง</label>
-        <textarea id="import-text" class="fi text-sm font-mono" rows="5" placeholder="วางข้อความแชทที่คัดลอกมาจาก LINE..."></textarea>
-      </div>
-
-      <div class="flex gap-2 justify-end">
-        <button onclick="processImport()" class="btn btn-primary w-full sm:w-auto">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          วิเคราะห์และนำเข้า
-        </button>
-      </div>
-      <div id="import-preview" class="hidden"></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveItem()">💾 บันทึก</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">ยกเลิก</button>
     </div>
+  </div>
+</div>
 
-    <!-- Data Management Operations -->
-    <div class="card rounded-2xl p-6 space-y-4">
-      <h3 class="font-bold text-lg text-c">💾 การบริหารจัดการข้อมูล (Database Manager)</h3>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <button onclick="exportCSV()" class="btn btn-ghost py-3 text-c hover:border-emerald-500 hover:text-emerald-500">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          ส่งออกไฟล์ CSV
-        </button>
-        <button onclick="backupJSON()" class="btn btn-ghost py-3 text-c hover:border-blue-500 hover:text-blue-500">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          สำรองข้อมูล JSON
-        </button>
-        <label class="btn btn-ghost py-3 text-c hover:border-indigo-500 hover:text-indigo-500 cursor-pointer flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          กู้คืนข้อมูล JSON
-          <input type="file" accept=".json" onchange="restoreJSON(event)" class="hidden">
-        </label>
-        <button onclick="clearAllData()" class="btn btn-danger py-3">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          ลบข้อมูลทั้งหมดในระบบ
-        </button>
-      </div>
-      <div class="flex items-center gap-2 mt-2">
-        <button onclick="generateSampleData()" class="btn btn-primary py-2 px-4 text-sm bg-indigo-600 hover:bg-indigo-700">
-          ⚙️ สร้างข้อมูลจำลอง (5 แปลง รอบพิกัดของคุณ)
-        </button>
-        <p class="text-xs text-c3">ใช้จำลองระบบแผนที่และตรวจระยะทางอัตโนมัติ 20 ม. เพื่อการทดสอบ</p>
-      </div>
+<!-- PHOTO VIEWER MODAL -->
+<div class="modal-overlay" id="photoModal">
+  <div class="modal" style="text-align:center; max-width:400px; padding:20px; border-radius:16px;">
+    <div class="modal-title" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <span>รูปถ่ายพื้นที่จริง</span>
+      <span class="modal-close" onclick="closePhotoModal()" style="cursor:pointer; font-size:20px; color:var(--text3);">✕</span>
     </div>
-  </section>
+    <img id="photoViewerImg" src="" style="width:100%; max-height:300px; object-fit:contain; border-radius:8px; border:1px solid var(--border); margin-bottom:12px;">
+    <button class="btn btn-ghost" onclick="closePhotoModal()" style="width:100%">ปิด</button>
+  </div>
+</div>
 
-</main>
+<!-- HIDDEN CAMERA INPUT -->
+<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none">
 
-<!-- Navigation Bottom Bar (Mobile First UI) -->
-<nav class="fixed bottom-0 left-0 right-0 z-[1000] bg-white dark:bg-slate-950 border-t border-c py-2 shadow-2xl flex items-center justify-around select-none">
-  <button onclick="switchTab('dashboard')" id="nav-btn-dashboard" class="flex flex-col items-center gap-0.5 text-c3 border-t-2 border-transparent px-3 py-1 font-medium transition-all">
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-    <span class="text-[11px]">แดชบอร์ด</span>
-  </button>
-  <button onclick="switchTab('queue')" id="nav-btn-queue" class="flex flex-col items-center gap-0.5 text-c3 border-t-2 border-transparent px-3 py-1 font-medium transition-all">
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-    <span class="text-[11px]">คิวสำรวจ</span>
-  </button>
-  <button onclick="switchTab('map')" id="nav-btn-map" class="flex flex-col items-center gap-0.5 text-c3 border-t-2 border-transparent px-3 py-1 font-medium transition-all">
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
-    <span class="text-[11px]">แผนที่</span>
-  </button>
-  <button onclick="switchTab('settings')" id="nav-btn-settings" class="flex flex-col items-center gap-0.5 text-c3 border-t-2 border-transparent px-3 py-1 font-medium transition-all">
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-    <span class="text-[11px]">ตั้งค่า</span>
-  </button>
-</nav>
+<!-- TOAST -->
+<div class="toast-wrap" id="toastWrap"></div>
 
 <script>
-// ===================== CONFIG & STATE =====================
-const STORAGE_SURVEYOR_KEY = 'lineexplore_surveyor_v2';
-const STORAGE_DARK_KEY = 'lineexplore_dark_v2';
+// ===== STATE =====
+let items = [];
+let editId = null;
+let filterSoi = '';
+let filterStatus = '';
+let searchQ = '';
+let darkMode = true;
+let visibleCount = 50;
 
-let state = {
-  records: [],
-  filtered: [],
-  renderLimit: 50,
-  statusFilter: 'all',
-  soiFilter: '',
-  distanceFilter: 'all',
-  searchQuery: '',
-  userLat: null,
-  userLng: null,
-  userAcc: null,
-  gpsEnabled: false,
-  surveyorName: localStorage.getItem(STORAGE_SURVEYOR_KEY) || 'ผู้สำรวจภาคสนาม',
-  activeTab: 'queue',
-  darkMode: localStorage.getItem(STORAGE_DARK_KEY) === '1',
-  isOnline: navigator.onLine,
+// GPS State
+let curLat = null;
+let curLng = null;
+let curAcc = null;
+
+// Photo State
+let photoTargetId = null;
+
+// Map references
+let map = null;
+let surveyorMarker = null;
+let markersGroup = null;
+
+const STORAGE_KEY = 'survey_items_v2';
+const THEME_KEY = 'survey_theme';
+
+// ===== INIT =====
+function init() {
+  loadStorage();
   
-  // Leaflet map vars
-  mapInstance: null,
-  mapMarkers: {},
-  userMarker: null,
-  userAccuracyCircle: null
-};
-
-// ===================== DATABASE (INDEXEDDB) =====================
-const DB_NAME = 'LineExploreDB';
-const DB_VERSION = 1;
-const STORE_RECORDS = 'records';
-const STORE_PHOTOS = 'photos';
-
-let db;
-
-function initDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = (e) => reject(e);
-    request.onsuccess = (e) => {
-      db = e.target.result;
-      resolve(db);
-    };
-    request.onupgradeneeded = (e) => {
-      const dbInstance = e.target.result;
-      if (!dbInstance.objectStoreNames.contains(STORE_RECORDS)) {
-        dbInstance.createObjectStore(STORE_RECORDS, { keyPath: 'id' });
-      }
-      if (!dbInstance.objectStoreNames.contains(STORE_PHOTOS)) {
-        dbInstance.createObjectStore(STORE_PHOTOS, { keyPath: 'id' });
-      }
-    };
+  // Theme restore
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === 'light') {
+    darkMode = false;
+    document.documentElement.setAttribute('data-theme','light');
+    document.getElementById('themeToggle').textContent = '☀️';
+  }
+  
+  // Surveyor Name restore
+  const savedSurveyor = localStorage.getItem('surveyor_name');
+  if (savedSurveyor) {
+    document.getElementById('surveyorName').value = savedSurveyor;
+  }
+  
+  // Save surveyor name on change
+  document.getElementById('surveyorName').addEventListener('input', (e) => {
+    localStorage.setItem('surveyor_name', e.target.value);
   });
+  
+  // Request GPS and watch position
+  initGPS();
+  
+  // Sync Status listeners
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  setTimeout(updateOnlineStatus, 500); // initial check after load
+  
+  // Start infinite scroll
+  initInfiniteScroll();
+  
+  // Start 10-second auto survey loop
+  initAutoSurveyLoop();
+  
+  renderAll();
+  bindEvents();
 }
 
-function loadRecordsFromDB() {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_RECORDS], 'readonly');
-    const store = transaction.objectStore(STORE_RECORDS);
-    const request = store.getAll();
-    request.onsuccess = () => {
-      state.records = request.result || [];
-      resolve(state.records);
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function saveRecordToDB(record) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_RECORDS], 'readwrite');
-    const store = transaction.objectStore(STORE_RECORDS);
-    const request = store.put(record);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function saveRecordsBatchToDB(records) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_RECORDS], 'readwrite');
-    const store = transaction.objectStore(STORE_RECORDS);
-    records.forEach(r => store.put(r));
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-  });
-}
-
-function deleteRecordFromDB(id) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_RECORDS, STORE_PHOTOS], 'readwrite');
-    transaction.objectStore(STORE_RECORDS).delete(id);
-    transaction.objectStore(STORE_PHOTOS).delete(id);
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-  });
-}
-
-function clearAllDBData() {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_RECORDS, STORE_PHOTOS], 'readwrite');
-    transaction.objectStore(STORE_RECORDS).clear();
-    transaction.objectStore(STORE_PHOTOS).clear();
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-  });
-}
-
-function getPhotoFromDB(id) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_PHOTOS], 'readonly');
-    const store = transaction.objectStore(STORE_PHOTOS);
-    const request = store.get(id);
-    request.onsuccess = () => resolve(request.result ? request.result.dataUrl : null);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function savePhotoToDB(id, dataUrl) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_PHOTOS], 'readwrite');
-    const store = transaction.objectStore(STORE_PHOTOS);
-    const request = store.put({ id, dataUrl });
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// ===================== DARK MODE =====================
-function toggleDark() {
-  state.darkMode = !state.darkMode;
-  document.documentElement.classList.toggle('dark', state.darkMode);
-  localStorage.setItem(STORAGE_DARK_KEY, state.darkMode ? '1' : '0');
-  updateDarkIcon();
-}
-function updateDarkIcon() {
-  const icon = document.getElementById('dark-icon');
-  if (state.darkMode) {
-    icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+function initGPS() {
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(updatePosition, handleGPSError, {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 10000
+    });
   } else {
-    icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+    toast("❌ เบราว์เซอร์นี้ไม่รองรับ GPS");
   }
 }
 
-// ===================== TABS SWITCHER =====================
-function switchTab(tabId) {
-  state.activeTab = tabId;
+function updatePosition(position) {
+  curLat = position.coords.latitude;
+  curLng = position.coords.longitude;
+  curAcc = position.coords.accuracy;
   
-  // Hide all sections
-  document.getElementById('content-dashboard').classList.add('hidden');
-  document.getElementById('content-queue').classList.add('hidden');
-  document.getElementById('content-map').classList.add('hidden');
-  document.getElementById('content-settings').classList.add('hidden');
+  const gpsText = document.getElementById('gpsText');
+  if (gpsText) {
+    gpsText.innerHTML = `±${curAcc.toFixed(1)}ม. (${curLat.toFixed(5)}, ${curLng.toFixed(5)})`;
+    document.getElementById('gpsStatus').style.color = curAcc <= 20 ? 'var(--green-text)' : 'var(--yellow-text)';
+  }
   
-  // Remove tab-active from buttons
-  document.getElementById('nav-btn-dashboard').classList.remove('tab-active');
-  document.getElementById('nav-btn-queue').classList.remove('tab-active');
-  document.getElementById('nav-btn-map').classList.remove('tab-active');
-  document.getElementById('nav-btn-settings').classList.remove('tab-active');
-  
-  // Show target section and highlight button
-  document.getElementById('content-' + tabId).classList.remove('hidden');
-  document.getElementById('nav-btn-' + tabId).classList.add('tab-active');
-  
-  if (tabId === 'map') {
-    setTimeout(initMap, 50); // Small delay to allow element sizing calculation
+  updateSurveyorMarker();
+  calculateAllDistances();
+  renderList();
+  renderStats();
+}
+
+function handleGPSError(error) {
+  console.warn("GPS Error: ", error);
+  const gpsText = document.getElementById('gpsText');
+  if (gpsText) {
+    gpsText.innerHTML = `❌ ดึงพิกัดไม่ได้ (${error.message})`;
+    document.getElementById('gpsStatus').style.color = 'var(--red-text)';
   }
 }
 
-// ===================== UUID GENERATOR =====================
-function genId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-}
-
-// ===================== NETWORK / OFFLINE =====================
-window.addEventListener('online', () => {
-  state.isOnline = true;
-  updateOnlineBadge();
-  showToast('กลับมาเชื่อมต่อเครือข่ายออนไลน์แล้ว', 'success');
-  // Simulated background sync
-  showToast('ซิงค์และตรวจสอบข้อมูลในเครื่องสำเร็จ', 'info');
-});
-window.addEventListener('offline', () => {
-  state.isOnline = false;
-  updateOnlineBadge();
-  showToast('ขาดการเชื่อมต่อเครือข่าย กำลังใช้งานโหมดออฟไลน์', 'warning');
-});
-function updateOnlineBadge() {
-  const el = document.getElementById('connection-badge');
-  if (state.isOnline) {
-    el.className = "text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-emerald-500 text-white flex items-center gap-1";
-    el.innerHTML = '<span class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></span> ออนไลน์';
+function updateOnlineStatus() {
+  const syncBadge = document.getElementById('syncStatus');
+  if (!syncBadge) return;
+  if (navigator.onLine) {
+    syncBadge.innerHTML = '🟢 Online';
+    syncBadge.style.color = 'var(--green-text)';
+    toast('📶 เชื่อมต่ออินเทอร์เน็ตแล้ว - ซิงค์ข้อมูลอัตโนมัติ');
+    syncOfflineData();
   } else {
-    el.className = "text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-rose-500 text-white flex items-center gap-1";
-    el.innerHTML = '<span class="w-1.5 h-1.5 bg-white rounded-full"></span> ออฟไลน์';
+    syncBadge.innerHTML = '🔴 Offline';
+    syncBadge.style.color = 'var(--red-text)';
+    toast('📴 ออฟไลน์โหมด - บันทึกในเครื่องอัตโนมัติ');
   }
 }
 
-// ===================== GPS FIELD SYSTEM =====================
-function setupGPS() {
-  if (!navigator.geolocation) {
-    showToast('อุปกรณ์ของคุณไม่สนับสนุนการทำงานของ GPS', 'error');
-    return;
-  }
+function syncOfflineData() {
+  const syncBadge = document.getElementById('syncStatus');
+  if (!syncBadge) return;
+  syncBadge.innerHTML = '🔄 Syncing...';
+  syncBadge.style.color = 'var(--yellow-text)';
   
-  // Request position once and register high accuracy tracking
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      updateLocation(pos);
-      showToast('เชื่อมต่อสิทธิ์ GPS สำเร็จ', 'success');
-      startWatchPosition();
-    },
-    (err) => {
-      console.error(err);
-      showToast('กรุณาเปิดสิทธิ์และบริการระบุพิกัด GPS เพื่อใช้งานการตรวจระยะทาง', 'warning');
-      startWatchPosition(); // still try to watch
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
+  setTimeout(() => {
+    syncBadge.innerHTML = '🟢 Online (Synced)';
+    syncBadge.style.color = 'var(--green-text)';
+    toast('✅ ซิงค์ข้อมูลล่าสุดกับระบบคลาวด์เรียบร้อย');
+  }, 1500);
 }
 
-function startWatchPosition() {
-  state.gpsWatchId = navigator.geolocation.watchPosition(
-    (pos) => {
-      updateLocation(pos);
-    },
-    (err) => {
-      console.error(err);
-      state.gpsEnabled = false;
-      document.getElementById('gps-hud-badge').textContent = 'สัญญาณผิดพลาด';
-      document.getElementById('gps-hud-badge').className = 'text-xs px-2 py-0.5 rounded-full font-bold bg-rose-500 text-white';
-    },
-    { enableHighAccuracy: true, maximumAge: 0 }
-  );
-}
-
-function updateLocation(pos) {
-  state.userLat = pos.coords.latitude;
-  state.userLng = pos.coords.longitude;
-  state.userAcc = pos.coords.accuracy;
-  state.gpsEnabled = true;
-
-  // Update Dashboard HUD
-  const hudLat = document.getElementById('gps-hud-lat');
-  const hudLng = document.getElementById('gps-hud-lng');
-  const hudAcc = document.getElementById('gps-hud-acc');
-  const hudBadge = document.getElementById('gps-hud-badge');
-
-  if (hudLat) hudLat.textContent = state.userLat.toFixed(6);
-  if (hudLng) hudLng.textContent = state.userLng.toFixed(6);
-  
-  if (hudAcc) {
-    hudAcc.textContent = `±${Math.round(state.userAcc)} ม.`;
-    if (state.userAcc <= 10) {
-      hudAcc.className = "font-bold text-emerald-500 mt-0.5";
-      hudBadge.className = 'text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-500 text-white';
-      hudBadge.textContent = 'สัญญาณดีมาก';
-    } else if (state.userAcc <= 30) {
-      hudAcc.className = "font-bold text-amber-500 mt-0.5";
-      hudBadge.className = 'text-xs px-2 py-0.5 rounded-full font-bold bg-amber-500 text-white';
-      hudBadge.textContent = 'สัญญาณปานกลาง';
-    } else {
-      hudAcc.className = "font-bold text-rose-500 mt-0.5";
-      hudBadge.className = 'text-xs px-2 py-0.5 rounded-full font-bold bg-rose-500 text-white';
-      hudBadge.textContent = 'สัญญาณต่ำ';
-    }
-  }
-
-  // Update Header Display
-  const headerGps = document.getElementById('header-gps-status');
-  const headerGpsText = document.getElementById('header-gps-text');
-  if (headerGps && headerGpsText) {
-    headerGps.classList.remove('hidden');
-    headerGpsText.textContent = `GPS: ±${Math.round(state.userAcc)}ม.`;
-  }
-
-  // Update Leaflet user marker if initialized
-  if (state.mapInstance) {
-    const latlng = L.latLng(state.userLat, state.userLng);
+function initInfiniteScroll() {
+  window.addEventListener('scroll', () => {
+    const activeTabEl = document.querySelector('.tab.active');
+    if (!activeTabEl) return;
+    const activeTab = activeTabEl.dataset.tab;
+    if (activeTab !== 'list') return;
     
-    if (!state.userMarker) {
-      state.userMarker = L.marker(latlng, { icon: createMarkerIcon('', true) }).addTo(state.mapInstance);
-      state.userAccuracyCircle = L.circle(latlng, { radius: state.userAcc, color: '#3b82f6', fillOpacity: 0.1, weight: 1 }).addTo(state.mapInstance);
-    } else {
-      state.userMarker.setLatLng(latlng);
-      state.userAccuracyCircle.setLatLng(latlng);
-      state.userAccuracyCircle.setRadius(state.userAcc);
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 250) {
+      const filtered = getFiltered();
+      if (visibleCount < filtered.length) {
+        visibleCount += 50;
+        renderList();
+      }
+    }
+  });
+}
+
+function initAutoSurveyLoop() {
+  setInterval(() => {
+    if (curLat === null || curLng === null) return;
+    
+    let updatedCount = 0;
+    items.forEach(item => {
+      if (item.status === 'done') return;
+      if (!item.lat || !item.lng) return;
+      
+      const dist = haversineMetres(curLat, curLng, item.lat, item.lng);
+      if (dist <= 20) {
+        markDone(item.id, dist);
+        updatedCount++;
+      }
+    });
+    
+    if (updatedCount > 0) {
+      toast(`🤖 ตรวจพบพิกัดเข้าใกล้จุดสำรวจ! บันทึกเสร็จสิ้นอัตโนมัติ ${updatedCount} รายการ`);
+    }
+  }, 10000); // 10 seconds tracking loop
+}
+
+// ===== STORAGE =====
+function loadStorage() {
+  try { items = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { items = []; }
+}
+function saveStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+// ===== UUID =====
+function uuid() { return 'id-' + Math.random().toString(36).substr(2,9) + Date.now().toString(36); }
+
+// ===== PARSE LINE =====
+function parseLineTxt(text) {
+  const lines = text.split('\n');
+  const entries = [];
+  let i = 0;
+  let currentDate = '';
+
+  // Patterns
+  const dateRe = /^(\d{4}\.\d{2}\.\d{2})/;
+  const msgRe = /^(\d{1,2}:\d{2})\s+(.+?)\s{2,}(.*)$/; // time  sender  text (double space separator)
+  const msgRe2 = /^(\d{1,2}:\d{2})\s+([^\s].*?)$/; // fallback
+  const mapsRe = /https?:\/\/(?:maps\.google\.com\/maps\?q=([-\d.]+),([-\d.]+)|maps\.app\.goo\.gl\/\S+|goo\.gl\/maps\/\S+)/g;
+  const coordRe = /https?:\/\/maps\.google\.com\/maps\?q=([-\d.]+),([-\d.]+)/;
+  const addrRe = /(\d+\/\d+|\d+\/\d+\/\d+)(?:ม\.?\s*(\d+)|หมู่?\s*(\d+))?/;
+  const soiRe = /ซอย\s*([^\s,]+(?:\s+\d+)?|จริงใจ\s*\d+|น้ำเย็น\s*\d+)/i;
+  const phoneRe = /(?:0[689]\d[-\s]?\d{3,4}[-\s]?\d{4}|\d{3}-\d{3}-\d{4}|\d{10})/;
+  const doneWords = /รออยู่บ้าน|อยู่บ้านแล้ว|เรียบร้อย|สำรวจแล้ว|ดำเนินการแล้ว/;
+  const inProgWords = /กำลังสำรวจ|ออกมารอ|รอแล้ว|สักครู่/;
+
+  // Tokenize: each "message block" = time + sender + 1..N lines of text
+  let blocks = [];
+  let cur = null;
+
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li].trim();
+    if (!line) continue;
+
+    const dMatch = line.match(dateRe);
+    if (dMatch) { currentDate = dMatch[1]; continue; }
+
+    // Detect message start: starts with HH:MM
+    const timeMatch = line.match(/^(\d{1,2}:\d{2})\s+(\S+.*)/);
+    if (timeMatch) {
+      if (cur) blocks.push(cur);
+      cur = { time: timeMatch[1], date: currentDate, raw: line, textLines: [] };
+      // rest after time+sender: parse out sender
+      const rest = timeMatch[2];
+      // Sender is up to first double-space or end
+      const senderMatch = rest.match(/^(.+?)\s{2,}(.*)$/);
+      if (senderMatch) {
+        cur.sender = senderMatch[1].trim();
+        if (senderMatch[2]) cur.textLines.push(senderMatch[2]);
+      } else {
+        cur.sender = rest.trim();
+      }
+    } else if (cur) {
+      cur.textLines.push(line);
     }
   }
+  if (cur) blocks.push(cur);
 
-  // Calculate distances and trigger UI update for list items
-  updateDistancesInUI();
+  // Now extract location entries
+  for (const block of blocks) {
+    const allText = block.textLines.join('\n');
+    // skip system messages
+    if (/เข้าร่วมกลุ่ม|เข้ากลุ่ม|ออกจากกลุ่ม|เปลี่ยนชื่อกลุ่ม|สติกเกอร์|ยกเลิกข้อความ|รูป/.test(allText) && !allText.match(/maps|พิกัด|\d+\/\d+/)) continue;
+
+    // Check for map links in any line
+    let mapUrl = '';
+    let lat = '', lng = '';
+    let hasMap = false;
+
+    for (const tl of block.textLines) {
+      const cm = tl.match(coordRe);
+      if (cm) { lat = cm[1]; lng = cm[2]; mapUrl = `https://maps.google.com/maps?q=${lat},${lng}`; hasMap = true; }
+      else if (/maps\.app\.goo\.gl|goo\.gl\/maps/.test(tl)) {
+        const mu = tl.match(/https?:\/\/\S+/);
+        if (mu) { mapUrl = mu[0]; hasMap = true; }
+      }
+    }
+
+    if (!hasMap) continue; // only entries with map links
+
+    // Extract details from all text lines
+    const combined = block.textLines.join(' ');
+    const addrM = combined.match(addrRe);
+    const soiM = combined.match(soiRe);
+    const phoneM = combined.match(phoneRe);
+
+    // Name: try to find Thai name pattern
+    let name = block.sender;
+    // Look for explicit name in text (Thai name usually 2-3 words)
+    const nameLines = block.textLines.filter(l => /^[ก-๙\s]{4,}$/.test(l.trim()) && !l.includes('/') && !l.match(/\d{5}/));
+    if (nameLines.length > 0 && nameLines[0].trim().length > 3) {
+      name = nameLines[0].trim();
+    }
+
+    // Note: look for action words or general descriptive text
+    let note = '';
+    for (const tl of block.textLines) {
+      if (!tl.match(/maps|https|ตำบล|อำเภอ|ระยอง/) && !tl.match(addrRe) && tl.trim().length > 4) {
+        note += (note ? ' ' : '') + tl.trim();
+      }
+    }
+
+    // Auto status
+    let status = 'pending';
+    if (doneWords.test(combined + note)) status = 'done';
+    else if (inProgWords.test(combined + note)) status = 'inprogress';
+
+    entries.push({
+      id: uuid(),
+      sender: block.sender,
+      name: name || block.sender,
+      address: addrM ? addrM[0].replace(/\s+/g, '') : '',
+      soi: soiM ? soiM[1].trim() : '',
+      phone: phoneM ? phoneM[0].replace(/\s/g,'-') : '',
+      map_url: mapUrl,
+      lat: parseFloat(lat) || null,
+      lng: parseFloat(lng) || null,
+      status: status,
+      note: note.substring(0,200),
+      created_at: block.date || new Date().toISOString().split('T')[0],
+      time: block.time || ''
+    });
+  }
+
+  return entries;
 }
 
-function updateDistancesInUI() {
-  // Update distances in current render list
-  state.records.forEach(rec => {
-    if (rec.lat && rec.lng && state.userLat) {
-      rec.current_distance = haversine(state.userLat, state.userLng, rec.lat, rec.lng);
-    } else {
-      rec.current_distance = Infinity;
-    }
-  });
+// ===== SMART MERGE =====
+// Distance threshold: ~8 metres  (1 degree lat ≈ 111,000 m → 0.00008 ≈ 8.8 m)
+const DIST_THRESHOLD = 0.00008;
+const BACKUP_KEY = 'survey_backup_auto';
+const IMPORT_LOG_KEY = 'survey_import_log';
 
-  // Re-render specific list elements without resetting scroll or search
-  const distanceElements = document.querySelectorAll('[data-distance-for]');
-  distanceElements.forEach(el => {
-    const id = el.getAttribute('data-distance-for');
-    const rec = state.records.find(r => r.id === id);
-    if (rec && rec.current_distance !== Infinity) {
-      const distInfo = getDistanceInfo(rec.current_distance);
-      el.className = `text-xs px-2.5 py-1 rounded-full font-bold border ${distInfo.color} flex items-center gap-1`;
-      el.innerHTML = distInfo.text;
-    }
-  });
-}
-
-function haversine(lat1, lon1, lat2, lon2) {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
-  const R = 6371000; // Earth radius in meters
+function haversineMetres(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-function getDistanceInfo(m) {
-  if (m === Infinity) return { text: '—', color: 'text-slate-400 bg-slate-50 border-slate-200' };
-  const dStr = m < 1000 ? Math.round(m) + ' ม.' : (m/1000).toFixed(1) + ' กม.';
-  if (m > 50) {
-    return { text: `🔴 ไกล (${dStr})`, color: 'text-rose-500 bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900/50' };
-  } else if (m > 20) {
-    return { text: `🟡 ใกล้ถึง (${dStr})`, color: 'text-amber-500 bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/50' };
-  } else {
-    return { text: `🟢 ถึงจุดแล้ว (${dStr})`, color: 'text-emerald-500 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/50' };
-  }
-}
-
-// ===================== AUTO POSITION TRACKING (AUTO SURVEY) =====================
-function startAutoSurveyLoop() {
-  // Check location and run survey matching every 10 seconds
-  setInterval(() => {
-    if (!state.gpsEnabled || !state.userLat) return;
-    runAutoSurveyCheck();
-  }, 10000);
-}
-
-function runAutoSurveyCheck() {
-  const unsurveyed = state.records.filter(r => r.status !== 'completed' && r.lat && r.lng);
-  let updatedAny = false;
-
-  unsurveyed.forEach(rec => {
-    const dist = haversine(state.userLat, state.userLng, rec.lat, rec.lng);
-    if (dist <= 20) {
-      // Auto survey target met!
-      rec.status = 'completed';
-      rec.surveyed_at = new Date().toLocaleString('th-TH');
-      rec.surveyor = state.surveyorName;
-      rec.gps_lat = state.userLat;
-      rec.gps_lng = state.userLng;
-      rec.distance_when_done = parseFloat(dist.toFixed(1));
-      
-      saveRecordToDB(rec);
-      updatedAny = true;
-      
-      // Feedback: Speech Synthesis & Vibrate
-      triggerArrivalAlert(rec);
-    }
+function autoBackup(sourceFileName) {
+  // Keep last 5 backups with timestamp
+  let backups = [];
+  try { backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]'); } catch {}
+  backups.unshift({
+    ts: new Date().toISOString(),
+    file: sourceFileName || 'unknown',
+    count: items.length,
+    data: JSON.parse(JSON.stringify(items)) // deep clone
   });
-
-  if (updatedAny) {
-    renderStats();
-    applyFilters();
-    updateMapMarkers();
+  if (backups.length > 5) backups = backups.slice(0, 5);
+  try { localStorage.setItem(BACKUP_KEY, JSON.stringify(backups)); } catch(e) {
+    // localStorage full — drop oldest
+    backups = backups.slice(0,2);
+    try { localStorage.setItem(BACKUP_KEY, JSON.stringify(backups)); } catch {}
   }
 }
 
-function triggerArrivalAlert(rec) {
-  // Haptic feedback
-  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
-  
-  // Text to Speech
+function restoreLatestBackup() {
   try {
-    const speech = new SpeechSynthesisUtterance(`ถึงจุดสำรวจเลขที่ ${rec.address || ''} ระบบบันทึกสถานะการสำรวจสำเร็จเรียบร้อยค่ะ`);
-    speech.lang = 'th-TH';
-    speech.rate = 1.0;
-    window.speechSynthesis.speak(speech);
-  } catch (e) {
-    console.error('Speech fail', e);
-  }
-
-  showToast(`✅ สำรวจแล้ว: ${rec.address || rec.name} (อัตโนมัติ 20 ม.)`, 'success');
+    const backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+    if (!backups.length) { toast('❌ ไม่พบข้อมูล Backup'); return; }
+    const latest = backups[0];
+    if (!confirm(`กู้คืนข้อมูล Backup จาก ${new Date(latest.ts).toLocaleString('th-TH')} (${latest.count} รายการ)?`)) return;
+    items = latest.data;
+    saveStorage();
+    renderAll();
+    toast(`✅ กู้คืน Backup สำเร็จ ${items.length} รายการ`);
+  } catch { toast('❌ กู้คืนไม่สำเร็จ'); }
 }
 
-// ===================== MANUAL DISTANCE CHECK BUTTON =====================
-function checkDistanceManual(id, lat, lng, title) {
-  if (!state.userLat) {
-    showToast('กรุณารอสแกนตำแหน่ง GPS ปัจจุบันสักครู่...', 'warning');
-    setupGPS();
-    return;
-  }
-  if (!lat || !lng) {
-    showToast('รายการนี้ไม่ได้ระบุพิกัด ละติจูด/ลองจิจูด', 'error');
-    return;
-  }
-  const dist = haversine(state.userLat, state.userLng, lat, lng);
-  const distInfo = getDistanceInfo(dist);
-  
-  showToast(`📡 ระยะทางไปยัง "${title}": ${distInfo.text.replace(/🔴 |🟡 |🟢 /, '')}`, 'info');
-}
+/** PROTECTED FIELDS — never overwrite from new import */
+const PROTECTED_FIELDS = ['status','note','surveyor','surveyed_at','gps_lat','gps_lng','distance_when_done','images'];
 
-// ===================== NAVIGATION SYSTEM =====================
-function startNavigation(lat, lng) {
-  if (!lat || !lng) {
-    showToast('ไม่สามารถนำทางได้เนื่องจากไม่มีข้อมูลพิกัด', 'error');
-    return;
-  }
-  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-  window.open(url, '_blank');
-}
+/** FILLABLE FIELDS — only fill if currently empty/null */
+const FILLABLE_FIELDS = ['phone','address','soi','name','lat','lng','map_url'];
 
-// ===================== PHOTO CAPTURE & COMPRESSION =====================
-function triggerCamera(id) {
-  const input = document.getElementById(`camera-input-${id}`);
-  if (input) input.click();
-}
+function mergeItems(newItems, sourceFile) {
+  const now = new Date().toISOString();
+  const importedAt = now;
 
-async function handlePhotoCapture(id, event) {
-  const file = event.target.files[0];
-  if (!file) return;
+  let stats = { added: 0, merged: 0, skipped: 0, fieldsUpdated: 0 };
 
-  showToast('📸 กำลังบีบอัดภาพเพื่อบันทึก...', 'info');
+  for (const ni of newItems) {
+    ni.imported_at = importedAt;
+    ni.source_file = sourceFile || '';
+    ni.updated_at = now;
 
-  try {
-    const base64Image = await compressImage(file, 800, 800, 0.75);
-    await savePhotoToDB(id, base64Image);
-    
-    // Update record state
-    const rec = state.records.find(r => r.id === id);
-    if (rec) {
-      rec.has_photo = true;
-      await saveRecordToDB(rec);
+    // ── Find existing record ──────────────────────────────────────
+    let found = null;
+
+    // 1. Exact lat/lng match (within 8 m)
+    if (ni.lat && ni.lng) {
+      let bestDist = Infinity;
+      for (const ex of items) {
+        if (!ex.lat || !ex.lng) continue;
+        const d = haversineMetres(ex.lat, ex.lng, ni.lat, ni.lng);
+        if (d < 8 && d < bestDist) { bestDist = d; found = ex; }
+      }
     }
-    
-    showToast('📸 ถ่ายภาพและบันทึกเรียบร้อย', 'success');
-    applyFilters();
-  } catch (err) {
-    console.error(err);
-    showToast('ไม่สามารถย่อรูปหรือบันทึกได้', 'error');
-  }
-}
 
-function compressImage(file, maxWidth, maxHeight, quality) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (e) => {
-      const img = new Image();
-      img.src = e.target.result;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
+    // 2. Normalised map URL match (fallback for short-links)
+    if (!found && ni.map_url) {
+      const nUrl = normalizeUrl(ni.map_url);
+      found = items.find(ex => ex.map_url && normalizeUrl(ex.map_url) === nUrl);
+    }
 
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
+    // ── Merge or Add ──────────────────────────────────────────────
+    if (found) {
+      // Mark as seen again this import
+      found.updated_at = now;
+      found.source_file = sourceFile || found.source_file || '';
+      found.imported_at = found.imported_at || importedAt; // keep first import time
+
+      let didUpdate = false;
+
+      // Fill empty fields only — never touch protected fields
+      for (const field of FILLABLE_FIELDS) {
+        const oldVal = found[field];
+        const newVal = ni[field];
+        const isEmpty = oldVal === null || oldVal === undefined || oldVal === '';
+        if (isEmpty && newVal !== null && newVal !== undefined && newVal !== '') {
+          found[field] = newVal;
+          didUpdate = true;
+          stats.fieldsUpdated++;
         }
+      }
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedBase64);
-      };
-      img.onerror = (err) => reject(err);
-    };
-    reader.onerror = (err) => reject(err);
-  });
-}
+      // status: NEVER downgrade  done→pending or done→inprogress
+      // Only upgrade: pending→inprogress if new import says so
+      const statusRank = { pending: 0, inprogress: 1, done: 2 };
+      const curRank = statusRank[found.status] ?? 0;
+      const newRank = statusRank[ni.status] ?? 0;
+      if (newRank > curRank) {
+        found.status = ni.status;
+        didUpdate = true;
+        stats.fieldsUpdated++;
+      }
+      // If new import brings done-keywords but existing is only pending — honour it
+      // (already handled above since parse sets status='done' for done-words)
 
-async function openLightbox(id, title) {
-  const dataUrl = await getPhotoFromDB(id);
-  if (!dataUrl) {
-    showToast('ไม่พบข้อมูลรูปภาพ', 'error');
-    return;
+      if (didUpdate) stats.merged++;
+      else stats.skipped++;
+
+    } else {
+      // Brand-new record — always starts at parsed status (pending unless keywords found)
+      items.push(ni);
+      stats.added++;
+    }
   }
 
-  const html = `
-    <div class="modal-bg animate-fade" onclick="closeModal()">
-      <div class="max-w-xl w-full p-4 relative" onclick="event.stopPropagation()">
-        <button onclick="closeModal()" class="absolute -top-12 right-2 text-white bg-slate-800/80 hover:bg-slate-900 rounded-full p-2.5">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-        <div class="card rounded-2xl overflow-hidden shadow-2xl bg-black">
-          <img src="${dataUrl}" class="w-full h-auto max-h-[75vh] object-contain mx-auto" alt="Survey image">
-          <div class="p-4 bg-slate-900 text-white">
-            <h4 class="font-bold text-base">${title}</h4>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  document.getElementById('modal-container').innerHTML = html;
+  return stats;
 }
 
-// ===================== MANUAL COMPLETED BUTTON & DATA INTEGRITY =====================
-function markAsCompleted(id) {
-  const rec = state.records.find(r => r.id === id);
-  if (!rec) return;
+function normalizeUrl(url) {
+  return (url||'').replace(/[?&]g_st=\w+/g,'').replace(/\s/g,'').toLowerCase();
+}
 
-  // Manual completed sets metadata
-  rec.status = 'completed';
-  rec.surveyed_at = new Date().toLocaleString('th-TH');
-  rec.surveyor = state.surveyorName;
+// ===== IMPORT LOG =====
+function saveImportLog(entry) {
+  let log = [];
+  try { log = JSON.parse(localStorage.getItem(IMPORT_LOG_KEY) || '[]'); } catch {}
+  log.unshift(entry);
+  if (log.length > 20) log = log.slice(0, 20);
+  try { localStorage.setItem(IMPORT_LOG_KEY, JSON.stringify(log)); } catch {}
+}
+function getImportLog() {
+  try { return JSON.parse(localStorage.getItem(IMPORT_LOG_KEY) || '[]'); } catch { return []; }
+}
+
+// ===== RENDER =====
+function renderAll() {
+  renderStats();
+  renderSoiChips();
+  renderList();
+  renderReport();
+}
+
+function renderStats() {
+  const total = items.length;
+  const done = items.filter(i=>i.status==='done').length;
+  const pending = items.filter(i=>i.status==='pending').length;
+  const inprog = items.filter(i=>i.status==='inprogress').length;
+  const pct = total ? Math.round(done/total*100) : 0;
   
-  if (state.userLat && rec.lat) {
-    const dist = haversine(state.userLat, state.userLng, rec.lat, rec.lng);
-    rec.gps_lat = state.userLat;
-    rec.gps_lng = state.userLng;
-    rec.distance_when_done = parseFloat(dist.toFixed(1));
+  // Calculate near items (< 50 meters, not done yet)
+  const near = items.filter(i => {
+    if (i.status === 'done') return false;
+    if (!i.lat || !i.lng || curLat === null || curLng === null) return false;
+    const dist = haversineMetres(curLat, curLng, i.lat, i.lng);
+    return dist < 50;
+  }).length;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statDone').textContent = done;
+  document.getElementById('statPending').textContent = pending;
+  document.getElementById('statInprogress').textContent = inprog;
+  document.getElementById('statNear').textContent = near;
+  document.getElementById('statPercent').textContent = pct + '%';
+  document.getElementById('progressBar').style.width = pct + '%';
+
+  // Quick list: pending/inprogress, max 10
+  const quick = items.filter(i=>i.status!=='done').slice(0,10);
+  const ql = document.getElementById('quickList');
+  if (!quick.length) {
+    ql.innerHTML = '<div class="empty"><div class="empty-icon">🎉</div><h3>สำรวจครบทุกรายการแล้ว!</h3></div>';
+    return;
+  }
+  ql.innerHTML = quick.map(item => cardHTML(item, true)).join('');
+}
+
+function getSois() {
+  const s = new Set(items.map(i=>i.soi).filter(Boolean));
+  return [...s].sort();
+}
+
+function renderSoiChips() {
+  const sois = getSois();
+  const el = document.getElementById('soiChips');
+  el.innerHTML = '<span class="soi-chip '+(filterSoi===''?'active':'')+'" onclick="setSoiFilter(\'\')">ทั้งหมด</span>' +
+    sois.map(s=>`<span class="soi-chip ${filterSoi===s?'active':''}" onclick="setSoiFilter('${s}')">${s} <span class="count-badge">${items.filter(i=>i.soi===s).length}</span></span>`).join('');
+
+  // Also fill filter select
+  const sel = document.getElementById('filterSoi');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">ทุกซอย</option>' + sois.map(s=>`<option value="${s}">${s}</option>`).join('');
+  sel.value = cur;
+}
+
+function setSoiFilter(s) {
+  filterSoi = s;
+  renderSoiChips();
+  renderList();
+}
+
+function getFiltered() {
+  return items.filter(item => {
+    if (filterStatus && item.status !== filterStatus) return false;
+    const sf = document.getElementById('filterSoi').value;
+    if (sf && item.soi !== sf) return false;
+    if (filterSoi && item.soi !== filterSoi) return false;
+    if (searchQ) {
+      const q = searchQ.toLowerCase();
+      const hay = [item.name,item.address,item.soi,item.phone,item.note,item.sender].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function getDistanceHTML(item) {
+  if (curLat === null || curLng === null || !item.lat || !item.lng) {
+    return `<span style="color:var(--text3)">📡 รอพิกัด GPS</span>`;
+  }
+  const dist = haversineMetres(curLat, curLng, item.lat, item.lng);
+  item.distance = dist; // Cache it
+  
+  let label = '';
+  let badgeColor = '';
+  if (dist > 50) {
+    label = '🔴 ไกล';
+    badgeColor = 'var(--red-text)';
+  } else if (dist > 20) {
+    label = '🟡 ใกล้ถึง';
+    badgeColor = 'var(--yellow-text)';
   } else {
-    rec.gps_lat = null;
-    rec.gps_lng = null;
-    rec.distance_when_done = null;
+    label = '🟢 ถึงจุดแล้ว';
+    badgeColor = 'var(--green-text)';
   }
+  
+  return `<div style="font-weight:600; color:${badgeColor}">${label}</div>
+          <div style="font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text2); margin-top:2px;">${formatDistance(dist)}</div>`;
+}
 
-  saveRecordToDB(rec).then(() => {
-    showToast(`✅ ทำการบันทึกการสำรวจเรียบร้อยแล้ว`, 'success');
-    renderStats();
-    applyFilters();
-    updateMapMarkers();
+function getImagesHTML(item) {
+  if (!item.images || item.images.length === 0) return '';
+  return `<div style="display:flex; gap:6px; margin-top:8px; overflow-x:auto; padding:2px 0;">
+    ${item.images.map((img, idx) => `
+      <div style="position:relative; flex-shrink:0;">
+        <img src="${img}" style="width:48px; height:48px; object-fit:cover; border-radius:6px; border:1px solid var(--border); cursor:pointer;" onclick="viewFullImage('${item.id}', ${idx})">
+        <span onclick="deleteImage('${item.id}', ${idx})" style="position:absolute; top:-4px; right:-4px; background:rgba(0,0,0,0.7); color:white; border-radius:50%; width:16px; height:16px; font-size:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold;">✕</span>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+function calculateAllDistances() {
+  if (curLat === null || curLng === null) return;
+  items.forEach(item => {
+    if (item.lat && item.lng) {
+      item.distance = haversineMetres(curLat, curLng, item.lat, item.lng);
+    } else {
+      item.distance = null;
+    }
   });
 }
 
-// ===================== LEAFLET INTERACTIVE MAP =====================
-function initMap() {
-  if (state.mapInstance) {
-    state.mapInstance.invalidateSize(); // ensure it renders correctly on display
-    return;
-  }
+function renderList() {
+  const filtered = getFiltered();
+  document.getElementById('resultCount').textContent = `แสดง ${Math.min(visibleCount, filtered.length)} จาก ${items.length} รายการ`;
 
-  // Bangkok default
-  const startLat = state.userLat || 13.7563;
-  const startLng = state.userLng || 100.5018;
+  const chunk = filtered.slice(0, visibleCount);
 
-  state.mapInstance = L.map('map').setView([startLat, startLng], 15);
+  // Desktop table
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = chunk.length ? chunk.map((item,idx) => `
+    <tr class="${item.status==='done'?'row-done':item.status==='inprogress'?'row-inprogress':''}" id="row-${item.id}">
+      <td style="color:var(--text3);font-family:'IBM Plex Mono',monospace;font-size:11px">${idx+1}</td>
+      <td>
+        <div style="font-weight:600;font-size:13px">${esc(item.name||item.sender||'-')}</div>
+        ${item.sender && item.sender!==item.name?`<div style="font-size:11px;color:var(--text3)">@${esc(item.sender)}</div>`:''}
+        ${getImagesHTML(item)}
+      </td>
+      <td style="font-family:'IBM Plex Mono',monospace">${esc(item.address||'-')}</td>
+      <td>${item.soi?`<span class="badge" style="background:var(--blue-bg);color:var(--accent2)">${esc(item.soi)}</span>`:'-'}</td>
+      <td>${item.phone?`<a href="tel:${item.phone}" style="color:var(--accent2);text-decoration:none">${esc(item.phone)}</a>`:'-'}</td>
+      <td>${getDistanceHTML(item)}</td>
+      <td><div class="note-text">${esc(item.note||'-')}</div></td>
+      <td>
+        <div style="display:flex; flex-wrap:wrap; gap:4px; max-width:260px;">
+          <button class="btn-sm" onclick="checkDistance('${item.id}')">📡 ตรวจระยะ</button>
+          <button class="btn-sm" onclick="openNavigation(${item.lat}, ${item.lng})" ${(!item.lat || !item.lng)?'disabled':''}>🧭 นำทาง</button>
+          <button class="btn-sm" onclick="markDone('${item.id}')" ${item.status==='done'?'disabled':''} style="color:var(--green-text);">✅ สำรวจแล้ว</button>
+          <button class="btn-sm" onclick="takePhoto('${item.id}')">📸 ถ่ายรูป</button>
+          <button class="btn-sm" onclick="updateItemCoordsToCurrent('${item.id}')">📍 ตำแหน่งปัจจุบัน</button>
+          <button class="btn-sm" onclick="editItem('${item.id}')">✏️ แก้ไข</button>
+        </div>
+      </td>
+      <td>
+        <button class="btn-sm" onclick="deleteItem('${item.id}')" style="color:var(--red-text)">🗑️</button>
+      </td>
+    </tr>`).join('') : '<tr><td colspan="9"><div class="empty"><div class="empty-icon">🔍</div><h3>ไม่พบข้อมูลที่ค้นหา</h3></div></td></tr>';
 
-  // Layers
-  const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors'
-  }).addTo(state.mapInstance);
-
-  const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: 19,
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-  });
-
-  const baseMaps = {
-    "แผนที่ถนน (OSM)": osmLayer,
-    "ภาพถ่ายดาวเทียม (Esri)": satelliteLayer
-  };
-
-  L.control.layers(baseMaps, null, { position: 'topright' }).addTo(state.mapInstance);
-
-  // User position marker
-  if (state.userLat) {
-    const latlng = L.latLng(state.userLat, state.userLng);
-    state.userMarker = L.marker(latlng, { icon: createMarkerIcon('', true) }).addTo(state.mapInstance);
-    state.userAccuracyCircle = L.circle(latlng, { radius: state.userAcc, color: '#3b82f6', fillOpacity: 0.1, weight: 1 }).addTo(state.mapInstance);
-  }
-
-  updateMapMarkers();
+  // Mobile cards
+  const cl = document.getElementById('cardList');
+  cl.innerHTML = chunk.length ? chunk.map(item => cardHTML(item, false)).join('') :
+    '<div class="empty"><div class="empty-icon">🔍</div><h3>ไม่พบข้อมูลที่ค้นหา</h3></div>';
 }
 
-function centerMapOnUser() {
-  if (!state.userLat) {
-    showToast('กรุณารอสแกนตำแหน่ง GPS ปัจจุบันสักครู่...', 'warning');
-    setupGPS();
-    return;
-  }
-  state.mapInstance.setView([state.userLat, state.userLng], 17);
+function cardHTML(item, minimal) {
+  const statusLabel = {pending:'🔴 รอสำรวจ', inprogress:'🟡 ใกล้ถึงจุด', done:'🟢 สำรวจแล้ว'}[item.status];
+  const imagesHTML = getImagesHTML(item);
+  return `<div class="survey-card ${item.status==='done'?'done':item.status==='inprogress'?'inprogress':''}" id="card-${item.id}">
+    <div class="card-header">
+      <div style="flex:1">
+        <div class="card-num">${item.time||''} · ${item.created_at||''}</div>
+        <div class="card-name">${esc(item.name||item.sender||'ไม่ระบุชื่อ')}</div>
+      </div>
+      <span class="badge badge-${item.status}">${statusLabel}</span>
+    </div>
+    <div class="card-body">
+      <div class="card-field"><label>บ้านเลขที่</label><span>${esc(item.address||'-')}</span></div>
+      <div class="card-field"><label>ซอย</label><span>${esc(item.soi||'-')}</span></div>
+      <div class="card-field"><label>เบอร์โทร</label><span>${item.phone?`<a href="tel:${item.phone}" style="color:var(--accent2)">${esc(item.phone)}</a>`:'-'}</span></div>
+      <div class="card-field"><label>ระยะห่าง</label><span>${getDistanceHTML(item)}</span></div>
+      <div class="card-field" style="grid-column: span 2;"><label>หมายเหตุ</label><span>${esc(item.note||'-')}</span></div>
+      ${imagesHTML ? `<div class="card-field" style="grid-column: span 2;"><label>รูปถ่าย</label>${imagesHTML}</div>` : ''}
+    </div>
+    <div class="card-actions-grid">
+      <button class="btn-big done" onclick="markDone('${item.id}')" ${item.status==='done'?'disabled':''} style="font-size:12px; padding: 6px 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; height: 52px;">
+        <span>✅</span> <span style="font-size:9px;">สำรวจแล้ว</span>
+      </button>
+      <button class="btn-big map" onclick="checkDistance('${item.id}')" style="font-size:12px; padding: 6px 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; height: 52px;">
+        <span>📡</span> <span style="font-size:9px;">ตรวจระยะ</span>
+      </button>
+      <button class="btn-big" onclick="openNavigation(${item.lat}, ${item.lng})" ${(!item.lat || !item.lng)?'disabled':''} style="font-size:12px; padding: 6px 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; height: 52px;">
+        <span>🧭</span> <span style="font-size:9px;">นำทาง</span>
+      </button>
+      <button class="btn-big" onclick="takePhoto('${item.id}')" style="font-size:12px; padding: 6px 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; height: 52px;">
+        <span>📸</span> <span style="font-size:9px;">ถ่ายรูป</span>
+      </button>
+      <button class="btn-big" onclick="updateItemCoordsToCurrent('${item.id}')" style="font-size:12px; padding: 6px 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; height: 52px;">
+        <span>📍</span> <span style="font-size:9px;">ตำแหน่งปัจจุบัน</span>
+      </button>
+      <button class="btn-big" onclick="editItem('${item.id}')" style="font-size:12px; padding: 6px 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; height: 52px;">
+        <span>✏️</span> <span style="font-size:9px;">แก้ไข</span>
+      </button>
+    </div>
+  </div>`;
 }
 
-function showOnMap(lat, lng) {
+function renderReport() {
+  const today = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+  document.getElementById('reportDate').textContent = today;
+
+  const total = items.length, done = items.filter(i=>i.status==='done').length;
+  const pending = items.filter(i=>i.status==='pending').length;
+  const inprog = items.filter(i=>i.status==='inprogress').length;
+  const pct = total ? Math.round(done/total*100) : 0;
+
+  document.getElementById('reportContent').innerHTML = `
+    <div class="report-row"><span>จำนวนทั้งหมด</span><strong>${total} รายการ</strong></div>
+    <div class="report-row"><span>🟢 สำรวจแล้ว</span><strong style="color:var(--green-text)">${done} รายการ (${pct}%)</strong></div>
+    <div class="report-row"><span>🟡 กำลังสำรวจ</span><strong style="color:var(--yellow-text)">${inprog} รายการ</strong></div>
+    <div class="report-row"><span>🔴 ค้างอยู่</span><strong style="color:var(--red-text)">${pending} รายการ</strong></div>
+    <div class="progress-bar-wrap" style="margin-top:12px;height:10px"><div class="progress-bar" style="width:${pct}%"></div></div>
+    <div style="text-align:center;font-size:12px;color:var(--text3);margin-top:6px">ความคืบหน้า ${pct}%</div>`;
+
+  const pendingItems = items.filter(i=>i.status!=='done');
+  const pl = document.getElementById('pendingList');
+  if (!pendingItems.length) { pl.innerHTML = '<div style="color:var(--green-text);padding:12px">✅ สำรวจครบทุกรายการแล้ว!</div>'; return; }
+  pl.innerHTML = pendingItems.map((item,i)=>`
+    <div class="report-row">
+      <span>${i+1}. ${esc(item.name||item.sender)} · ${esc(item.address||'')} ${esc(item.soi?'ซอย'+item.soi:'')}</span>
+      <span class="badge badge-${item.status}">${{pending:'รอ',inprogress:'กำลัง'}[item.status]}</span>
+    </div>`).join('');
+}
+
+// ===== ACTIONS =====
+// ===== ACTIONS =====
+function setStatus(id, status) {
+  const item = items.find(i=>i.id===id);
+  if (item) {
+    if (item.status === 'done' && status !== 'done') {
+      toast("⚠️ ห้าม Downgrade สถานะ 'สำรวจแล้ว' โดยเด็ดขาด!");
+      renderAll();
+      return;
+    }
+    
+    if (status === 'done' && item.status !== 'done') {
+      markDone(id);
+    } else {
+      item.status = status;
+      saveStorage();
+      renderAll();
+      if (map) updateMapMarkers();
+    }
+  }
+}
+
+function markDone(id, distance = null) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  if (item.status === 'done') return;
+  
+  item.status = 'done';
+  item.surveyed_at = new Date().toISOString();
+  item.surveyor = document.getElementById('surveyorName').value || 'ระบบ GPS อัตโนมัติ';
+  item.gps_lat = curLat;
+  item.gps_lng = curLng;
+  item.distance_when_done = distance !== null ? distance : (curLat && curLng && item.lat && item.lng ? haversineMetres(curLat, curLng, item.lat, item.lng) : null);
+  
+  saveStorage();
+  renderAll();
+  if (map) updateMapMarkers();
+  toast(`✅ สำรวจแล้ว: ${item.name || item.address}`);
+}
+
+function checkDistance(id) {
+  if (curLat === null || curLng === null) {
+    toast("❌ ยังไม่สามารถระบุตำแหน่ง GPS ปัจจุบันของคุณได้");
+    return;
+  }
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  if (!item.lat || !item.lng) {
+    toast("❌ รายการนี้ไม่มีข้อมูลพิกัด (lat, lng)");
+    return;
+  }
+  
+  const dist = haversineMetres(curLat, curLng, item.lat, item.lng);
+  toast(`📡 ระยะห่างจาก ${item.name || item.address}: ${formatDistance(dist)}`);
+  
+  // Highlight and focus on Map tab
+  focusOnMap(item.id);
+  
+  if (dist <= 20 && item.status !== 'done') {
+    markDone(item.id, dist);
+  }
+}
+
+function focusOnMap(id) {
+  // Switch to Map tab
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector('[data-tab="map"]').classList.add('active');
+  document.querySelectorAll('.main > div[id^="tab-"]').forEach(d=>d.style.display='none');
+  document.getElementById('tab-map').style.display='';
+  
+  initMap();
+  map.invalidateSize();
+  
+  const item = items.find(i => i.id === id);
+  if (item && item.lat && item.lng) {
+    map.setView([item.lat, item.lng], 17);
+    markersGroup.eachLayer(layer => {
+      if (layer instanceof L.CircleMarker) {
+        const latlng = layer.getLatLng();
+        if (Math.abs(latlng.lat - item.lat) < 0.00001 && Math.abs(latlng.lng - item.lng) < 0.00001) {
+          layer.openPopup();
+        }
+      }
+    });
+  }
+}
+
+function openNavigation(lat, lng) {
   if (!lat || !lng) {
-    showToast('รายการนี้ไม่ได้ระบุละติจูด/ลองจิจูด', 'error');
+    toast("❌ รายการนี้ไม่มีข้อมูลพิกัดสำหรับนำทาง");
     return;
   }
-  switchTab('map');
-  setTimeout(() => {
-    state.mapInstance.setView([lat, lng], 18);
-    // Find marker and open popup
-    const marker = state.mapMarkers[lat + ',' + lng];
-    if (marker) marker.openPopup();
-  }, 100);
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+}
+
+function updateItemCoordsToCurrent(id) {
+  if (curLat === null || curLng === null) {
+    toast("❌ ไม่สามารถดึงตำแหน่ง GPS ปัจจุบันของคุณได้");
+    return;
+  }
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  
+  if (confirm(`คุณต้องการบันทึกพิกัด GPS ปัจจุบัน (${curLat.toFixed(6)}, ${curLng.toFixed(6)}) ไปยังรายการ "${item.name || item.address}" หรือไม่?`)) {
+    item.lat = curLat;
+    item.lng = curLng;
+    item.distance = haversineMetres(curLat, curLng, item.lat, item.lng);
+    saveStorage();
+    renderAll();
+    if (map) updateMapMarkers();
+    toast(`📍 อัปเดตพิกัดสำหรับ "${item.name || item.address}" แล้ว`);
+  }
+}
+
+function takePhoto(id) {
+  photoTargetId = id;
+  document.getElementById('cameraInput').click();
+}
+
+function viewFullImage(id, idx) {
+  event.stopPropagation();
+  const item = items.find(i => i.id === id);
+  if (item && item.images && item.images[idx]) {
+    document.getElementById('photoViewerImg').src = item.images[idx];
+    document.getElementById('photoModal').classList.add('open');
+  }
+}
+
+function closePhotoModal() {
+  document.getElementById('photoModal').classList.remove('open');
+}
+
+function deleteImage(id, idx) {
+  event.stopPropagation();
+  if (!confirm("ลบรูปภาพนี้ใช่หรือไม่?")) return;
+  const item = items.find(i => i.id === id);
+  if (item && item.images) {
+    item.images.splice(idx, 1);
+    saveStorage();
+    renderAll();
+    toast("🗑️ ลบรูปภาพเรียบร้อย");
+  }
+}
+
+// ===== MAP INTERACTION =====
+function initMap() {
+  if (map) return;
+  
+  let center = [12.796, 101.036]; // default map center
+  if (items.length > 0) {
+    const valid = items.find(i => i.lat && i.lng);
+    if (valid) center = [valid.lat, valid.lng];
+  }
+  
+  map = L.map('map').setView(center, 15);
+  
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+  
+  markersGroup = L.layerGroup().addTo(map);
+  
+  updateMapMarkers();
+  updateSurveyorMarker();
 }
 
 function updateMapMarkers() {
-  if (!state.mapInstance) return;
-
-  // Clear old markers
-  for (const key in state.mapMarkers) {
-    state.mapInstance.removeLayer(state.mapMarkers[key]);
-  }
-  state.mapMarkers = {};
-
-  state.records.forEach(rec => {
-    if (!rec.lat || !rec.lng) return;
-
-    const key = rec.lat + ',' + rec.lng;
-    const marker = L.marker([rec.lat, rec.lng], {
-      icon: createMarkerIcon(rec.status, false, rec.current_distance)
-    }).addTo(state.mapInstance);
-
-    const distInfo = rec.current_distance !== undefined ? getDistanceInfo(rec.current_distance).text : '—';
+  if (!map || !markersGroup) return;
+  markersGroup.clearLayers();
+  
+  items.forEach(item => {
+    if (!item.lat || !item.lng) return;
     
-    // Popup Layout
-    const popupHtml = `
-      <div class="space-y-2 p-1 min-w-[200px] text-slate-800 dark:text-slate-200">
-        <div class="font-bold text-sm">${esc(rec.address || 'ไม่ระบุบ้านเลขที่')}</div>
-        <div class="text-xs text-slate-500">${esc(rec.name || 'ไม่ระบุชื่อ')} | ${esc(rec.soi || 'ไม่ระบุซอย')}</div>
-        <div class="flex items-center gap-1.5 mt-1">
-          <span class="px-2 py-0.5 rounded text-[10px] font-bold ${getBadgeStyle(rec.status)}">${getStatusLabel(rec.status)}</span>
-          <span class="text-xs font-mono font-bold text-slate-600">${distInfo}</span>
-        </div>
-        <div class="flex gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-          <button onclick="startNavigation(${rec.lat},${rec.lng})" class="px-2.5 py-1.5 bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs rounded flex-1 text-center">🧭 นำทาง</button>
-          ${rec.status !== 'completed' ? `<button onclick="markAsCompleted('${rec.id}'); state.mapInstance.closePopup();" class="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded flex-1 text-center">✅ เสร็จ</button>` : ''}
+    let color = '#da3633'; // pending
+    let statusLabel = '🔴 รอสำรวจ';
+    if (item.status === 'done') {
+      color = '#2ea043'; // done
+      statusLabel = '🟢 สำรวจแล้ว';
+    } else if (item.status === 'inprogress') {
+      color = '#d29922'; // inprogress / near
+      statusLabel = '🟡 กำลังสำรวจ';
+    }
+    
+    const dist = (curLat && curLng) ? haversineMetres(curLat, curLng, item.lat, item.lng) : null;
+    
+    const marker = L.circleMarker([item.lat, item.lng], {
+      radius: 9,
+      fillColor: color,
+      color: '#fff',
+      weight: 1.5,
+      opacity: 1,
+      fillOpacity: 0.95
+    });
+    
+    const popupContent = `
+      <div style="font-family:'Sarabun', sans-serif; font-size:13px; color:var(--text); line-height: 1.5;">
+        <b style="font-size:14px; color:var(--accent2);">${esc(item.name || 'ไม่ระบุชื่อ')}</b><br>
+        🏡 บ้านเลขที่: ${esc(item.address || '-')}<br>
+        📍 ซอย: ${esc(item.soi || '-')}<br>
+        📌 สถานะ: <b>${statusLabel}</b><br>
+        📡 ระยะห่าง: <b>${formatDistance(dist)}</b><br>
+        <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
+          <button onclick="openNavigation(${item.lat}, ${item.lng})" style="padding:6px 10px; font-family:'Sarabun'; font-size:11px; font-weight:600; background:#1f6feb; color:white; border:none; border-radius:6px; cursor:pointer;">🧭 นำทาง</button>
+          <button onclick="quickMarkDone('${item.id}')" ${item.status==='done'?'disabled':''} style="padding:6px 10px; font-family:'Sarabun'; font-size:11px; font-weight:600; background:#2ea043; color:white; border:none; border-radius:6px; cursor:pointer;">✅ สำรวจแล้ว</button>
         </div>
       </div>
     `;
-
-    marker.bindPopup(popupHtml);
-    state.mapMarkers[key] = marker;
-  });
-}
-
-function createMarkerIcon(status, isUser = false, distance = Infinity) {
-  if (isUser) {
-    return L.divIcon({
-      html: `<div class="relative flex items-center justify-center w-8 h-8">
-               <div class="absolute w-8 h-8 bg-blue-500 rounded-full opacity-30 animate-ping"></div>
-               <div class="w-4.5 h-4.5 bg-blue-600 border-2 border-white rounded-full shadow-lg"></div>
-             </div>`,
-      className: '',
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    });
-  }
-
-  let color = '#ef4444'; // Red (Pending >50m)
-  if (status === 'completed') {
-    color = '#10b981'; // Green (Completed)
-  } else if (status === 'processing') {
-    color = '#f59e0b'; // Yellow (Processing)
-  } else if (distance <= 50) {
-    color = '#f59e0b'; // Yellow (Pending but <= 50m)
-  }
-
-  return L.divIcon({
-    html: `<div class="w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative cursor-pointer" style="background-color: ${color}">
-             <div class="w-2 h-2 bg-white rounded-full"></div>
-           </div>`,
-    className: '',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
-  });
-}
-
-function getStatusLabel(status) {
-  if (status === 'completed') return 'สำรวจแล้ว';
-  if (status === 'processing') return 'กำลังสำรวจ';
-  return 'รอสำรวจ';
-}
-
-function getBadgeStyle(status) {
-  if (status === 'completed') return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
-  if (status === 'processing') return 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300';
-  return 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300';
-}
-
-// ===================== MERGE LOGIC & DATA INTEGRITY =====================
-function mergeRecords(incoming) {
-  let added = 0, merged = 0;
-
-  for (const rec of incoming) {
-    // Find duplicate in state by lat/lng or address
-    const dup = state.records.find(r => {
-      if (rec.lat && rec.lng && r.lat && r.lng) {
-        const dlat = Math.abs(r.lat - rec.lat);
-        const dlng = Math.abs(r.lng - rec.lng);
-        return dlat < 0.0001 && dlng < 0.0001;
-      }
-      if (rec.address && r.address && rec.address.trim() === r.address.trim()) return true;
-      return false;
-    });
-
-    if (dup) {
-      // Security Check: Never Downgrade Completed done -> pending or done -> processing
-      if (dup.status === 'completed') {
-        // Leave status completed, do not overwrite status
-      } else {
-        // Upgrade allowed (pending -> processing -> completed)
-        const statusPriority = { completed: 3, processing: 2, pending: 1 };
-        if (statusPriority[rec.status] > statusPriority[dup.status]) {
-          dup.status = rec.status;
-        }
-      }
-
-      // Merge notes
-      if (rec.note) {
-        dup.note = (dup.note ? dup.note + '\n---\n' : '') + `[${rec.created_at}] ${rec.name}: ${rec.note}`;
-      }
-      if (!dup.phone && rec.phone) dup.phone = rec.phone;
-      if (!dup.soi && rec.soi) dup.soi = rec.soi;
-      
-      merged++;
-    } else {
-      state.records.push(rec);
-      added++;
-    }
-  }
-
-  return { added, merged };
-}
-
-// ===================== DYNAMIC RENDER & INFINITE SCROLL =====================
-function applyFilters() {
-  state.searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
-  state.soiFilter = document.getElementById('soi-filter').value;
-  state.distanceFilter = document.getElementById('distance-filter').value;
-  
-  let list = [...state.records];
-
-  // Status Filter
-  if (state.statusFilter !== 'all') {
-    list = list.filter(r => r.status === state.statusFilter);
-  }
-
-  // Soi Filter
-  if (state.soiFilter) {
-    list = list.filter(r => r.soi === state.soiFilter);
-  }
-
-  // Distance calculations check
-  list.forEach(rec => {
-    if (rec.lat && rec.lng && state.userLat) {
-      rec.current_distance = haversine(state.userLat, state.userLng, rec.lat, rec.lng);
-    } else {
-      rec.current_distance = Infinity;
-    }
-  });
-
-  // Distance Filter
-  if (state.distanceFilter !== 'all') {
-    if (state.distanceFilter === 'near') {
-      list = list.filter(r => r.current_distance <= 20);
-    } else if (state.distanceFilter === 'mid') {
-      list = list.filter(r => r.current_distance > 20 && r.current_distance <= 50);
-    } else if (state.distanceFilter === 'far') {
-      list = list.filter(r => r.current_distance > 50);
-    }
-  }
-
-  // Search Filter
-  if (state.searchQuery) {
-    list = list.filter(r => {
-      const hay = [r.name, r.address, r.soi, r.phone, r.note, r.lat, r.lng].join(' ').toLowerCase();
-      return state.searchQuery.split(' ').every(w => hay.includes(w));
-    });
-  }
-
-  // Sort: If GPS active, sort unsurveyed targets by distance
-  if (state.gpsEnabled && state.userLat) {
-    list.sort((a, b) => {
-      // Completed items go bottom
-      if (a.status === 'completed' && b.status !== 'completed') return 1;
-      if (a.status !== 'completed' && b.status === 'completed') return -1;
-      
-      const distA = a.current_distance || Infinity;
-      const distB = b.current_distance || Infinity;
-      return distA - distB;
-    });
-  }
-
-  state.filtered = list;
-  state.renderLimit = 50; // reset pagination
-  renderList(false);
-}
-
-function renderList(append = false) {
-  const container = document.getElementById('list-section');
-  const empty = document.getElementById('empty-state');
-  const countEl = document.getElementById('result-count');
-
-  if (state.records.length === 0) {
-    container.innerHTML = '';
-    empty.classList.remove('hidden');
-    countEl.textContent = '';
-    return;
-  }
-
-  empty.classList.add('hidden');
-  countEl.textContent = `แสดง ${Math.min(state.renderLimit, state.filtered.length)} จาก ${state.filtered.length} รายการ`;
-
-  if (state.filtered.length === 0) {
-    container.innerHTML = `<div class="text-center py-16 text-c2 text-sm">ไม่พบรายการสำรวจตามเงื่อนไขการค้นหา</div>`;
-    return;
-  }
-
-  // Slice list
-  const slice = state.filtered.slice(0, state.renderLimit);
-  const q = state.searchQuery;
-
-  const html = slice.map((rec, i) => {
-    const distInfo = rec.current_distance !== undefined && rec.current_distance !== Infinity ? getDistanceInfo(rec.current_distance) : null;
-    const distanceBadge = distInfo ? `<span data-distance-for="${rec.id}" class="text-xs px-2.5 py-1 rounded-full font-bold border ${distInfo.color} flex items-center gap-1">${distInfo.text}</span>` : '';
     
-    // Status border color logic
-    let cardStatusClass = `card-${rec.status}`;
-    if (rec.status === 'pending' && rec.current_distance <= 50 && rec.current_distance !== Infinity) {
-      cardStatusClass = `border-l-5 border-amber-400`; // yellow warning if close
-    }
-
-    return `
-    <div class="card card-hover rounded-2xl p-4 md:p-5 ${cardStatusClass} animate-slide space-y-3" style="animation-delay: ${Math.min(i*0.015, 0.2)}s">
-      <div class="flex items-start justify-between gap-3">
-        <div class="flex-1 min-w-0 space-y-2">
-          <div class="flex flex-wrap items-center gap-1.5">
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${getBadgeStyle(rec.status)}">${getStatusLabel(rec.status)}</span>
-            ${distanceBadge}
-            <span class="text-[11px] text-c3 font-mono">นำเข้า: ${rec.created_at}</span>
-          </div>
-
-          <div class="font-bold text-lg text-c">${highlight(rec.name || 'ไม่ระบุชื่อ', q)}</div>
-          
-          ${rec.address ? `<div class="text-sm text-c2 flex items-center gap-1.5">
-            <svg class="flex-shrink-0 text-c3" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            <span class="font-semibold">${highlight(rec.address, q)}</span> ${rec.soi ? ' · ' + highlight(rec.soi, q) : ''}
-          </div>` : ''}
-
-          ${rec.phone ? `<div class="text-sm text-c2 flex items-center gap-1.5">
-            <svg class="flex-shrink-0 text-c3" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.54 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-            <a href="tel:${rec.phone}" class="text-brand-600 dark:text-brand-400 hover:underline font-bold">${highlight(rec.phone, q)}</a>
-          </div>` : ''}
-
-          ${rec.lat ? `<div class="text-xs font-mono text-c3 flex items-center gap-1.5">
-            <svg class="flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            พิกัด: ${rec.lat.toFixed(6)}, ${rec.lng.toFixed(6)}
-          </div>` : ''}
-
-          ${rec.note ? `<div class="text-xs text-c3 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border border-c mt-1 whitespace-pre-line">${highlight(rec.note, q)}</div>` : ''}
-
-          <!-- Survey History Display -->
-          ${rec.status === 'completed' && rec.surveyed_at ? `
-            <div class="text-[11px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 p-2 rounded-lg border border-emerald-200 dark:border-emerald-900/50 space-y-0.5">
-              <div class="font-bold flex items-center gap-1">📋 ประวัติการสำรวจสำเร็จ</div>
-              <div>เวลา: ${rec.surveyed_at}</div>
-              <div>ผู้บันทึก: ${esc(rec.surveyor || 'ระบบ')}</div>
-              ${rec.distance_when_done !== null ? `<div>ระยะตรวจจับ: ${rec.distance_when_done} ม. (${rec.gps_lat ? 'พิกัด GPS จริง' : 'แมนนวล'})</div>` : ''}
-            </div>
-          ` : ''}
-        </div>
-
-        <!-- Touch Action Buttons (Mobile First layout) -->
-        <div class="flex flex-col gap-2 flex-shrink-0 w-24">
-          <!-- 1. Check Distance -->
-          ${rec.lat ? `<button onclick="checkDistanceManual('${rec.id}', ${rec.lat}, ${rec.lng}, '${(rec.address || rec.name || '').replace(/'/g, "\\'")}')" class="btn btn-ghost py-2 text-xs flex items-center justify-center gap-1" title="ตรวจวัดระยะทางจริง">
-            <span>📡</span> ตรวจระยะ
-          </button>` : ''}
-
-          <!-- 2. Navigate -->
-          ${rec.lat ? `<button onclick="startNavigation(${rec.lat}, ${rec.lng})" class="btn text-white py-2 text-xs font-bold bg-brand-500 hover:bg-brand-600 flex items-center justify-center gap-1 shadow-sm" title="นำทางผ่าน Google Maps">
-            <span>🧭</span> นำทาง
-          </button>` : ''}
-
-          <!-- 3. Mark completed (Disabled if completed already) -->
-          ${rec.status !== 'completed' ? `
-            <button onclick="markAsCompleted('${rec.id}')" class="btn text-white py-2 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center gap-1 shadow-sm" title="บันทึกสำรวจแล้ว">
-              <span>✅</span> สำรวจแล้ว
-            </button>
-          ` : `
-            <button class="btn border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 py-2 text-xs font-bold opacity-60 cursor-not-allowed flex items-center justify-center gap-1" disabled>
-              <span>✓</span> สำรวจแล้ว
-            </button>
-          `}
-
-          <!-- 4. Take Photo -->
-          <input type="file" id="camera-input-${rec.id}" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoCapture('${rec.id}', event)">
-          <button onclick="triggerCamera('${rec.id}')" class="btn btn-ghost py-2 text-xs flex items-center justify-center gap-1 hover:border-indigo-500 hover:text-indigo-500" title="ถ่ายภาพพยานภาคสนาม">
-            <span>📸</span> ${rec.has_photo ? 'ดูรูป/ถ่ายใหม่' : 'ถ่ายรูป'}
-          </button>
-          
-          <!-- Photo Thumbnail -->
-          ${rec.has_photo ? `
-            <div class="w-20 h-16 rounded-lg overflow-hidden border border-c cursor-pointer hover:opacity-80 mx-auto shadow-sm" onclick="openLightbox('${rec.id}', '${(rec.address || rec.name || '').replace(/'/g, "\\'")}')">
-              <div id="thumb-${rec.id}" class="w-full h-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 bg-cover bg-center" style="background-image: url('')">โหลดรูป...</div>
-            </div>
-          ` : ''}
-
-          <!-- 5. Show Marker on Map -->
-          ${rec.lat ? `<button onclick="showOnMap(${rec.lat}, ${rec.lng})" class="btn btn-ghost py-2 text-xs flex items-center justify-center gap-1" title="แสดงพิกัดบนแผนที่ในตัว">
-            <span>📍</span> ดูพิกัด
-          </button>` : ''}
-
-          <!-- 6. Edit -->
-          <button onclick="openEditModal('${rec.id}')" class="btn btn-ghost py-2 text-xs flex items-center justify-center gap-1" title="แก้ไขข้อมูลข้อมูล">
-            <span>✏️</span> แก้ไข
-          </button>
-        </div>
-      </div>
-      <div class="border-t border-c pt-2 flex items-center justify-between text-xs text-c3">
-        <span>รายการลำรวจที่ #${String(i+1).padStart(3, '0')}</span>
-        <button onclick="deleteRecord('${rec.id}')" class="text-rose-500 hover:underline">ลบรายการ</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  if (append) {
-    container.innerHTML += html;
-  } else {
-    container.innerHTML = html;
-  }
-
-  // Async load thumbnails
-  slice.forEach(async rec => {
-    if (rec.has_photo) {
-      const el = document.getElementById(`thumb-${rec.id}`);
-      if (el) {
-        const url = await getPhotoFromDB(rec.id);
-        if (url) {
-          el.style.backgroundImage = `url('${url}')`;
-          el.textContent = '';
-        } else {
-          el.textContent = '❌ ไม่มีรูป';
-        }
-      }
-    }
+    marker.bindPopup(popupContent);
+    markersGroup.addLayer(marker);
   });
 }
 
-function highlight(text, q) {
-  if (!q || !text) return text || '';
-  const safe = text.toString().replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  try {
-    const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    return safe.replace(new RegExp(escapedQuery, 'gi'), m => `<mark>${m}</mark>`);
-  } catch { return safe; }
+function quickMarkDone(id) {
+  markDone(id);
+  updateMapMarkers();
 }
 
-function esc(s) {
-  return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ===================== INFINITE SCROLL DETECTION =====================
-window.addEventListener('scroll', () => {
-  if (state.activeTab !== 'queue') return;
-  if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 400) {
-    if (state.renderLimit < state.filtered.length) {
-      state.renderLimit += 50;
-      renderList(false); // fast re-render slice
-    }
-  }
-});
-
-// ===================== EDIT MODAL & DATA INTEGRITY LOCKS =====================
-function openEditModal(id) {
-  const rec = state.records.find(r => r.id === id);
-  if (!rec) return;
-
-  const isCompleted = rec.status === 'completed';
-
-  const html = `
-    <div class="modal-bg animate-fade" onclick="if(event.target===this)closeModal()">
-      <div class="modal-box animate-slide p-5 space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="font-bold text-lg text-c">✏️ แก้ไขข้อมูลแปลงสำรวจ</h3>
-          <button onclick="closeModal()" class="btn btn-ghost p-1.5 rounded-lg" style="min-height:36px; min-width:36px">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div><label class="fl">ชื่อผู้ส่ง</label><input class="fi mt-1" id="e-name" value="${esc(rec.name)}"></div>
-          <div><label class="fl">บ้านเลขที่</label><input class="fi mt-1" id="e-address" value="${esc(rec.address)}"></div>
-          <div><label class="fl">ซอย</label><input class="fi mt-1" id="e-soi" value="${esc(rec.soi)}"></div>
-          <div><label class="fl">เบอร์โทร</label><input class="fi mt-1" id="e-phone" value="${esc(rec.phone)}"></div>
-          <div><label class="fl">ละติจูด (Latitude)</label><input class="fi mt-1 font-mono text-sm" id="e-lat" value="${rec.lat||''}"></div>
-          <div><label class="fl">ลองจิจูด (Longitude)</label><input class="fi mt-1 font-mono text-sm" id="e-lng" value="${rec.lng||''}"></div>
-          <div class="sm:col-span-2"><label class="fl">Google Maps Link</label><input class="fi mt-1 font-mono text-xs" id="e-url" value="${esc(rec.map_url)}"></div>
-          <div class="sm:col-span-2">
-            <label class="fl">สถานะสำรวจ</label>
-            <select class="fi mt-1 font-bold text-slate-800 dark:text-white" id="e-status" ${isCompleted ? 'disabled' : ''}>
-              <option value="pending" ${rec.status==='pending'?'selected':''}>🔴 รอสำรวจ</option>
-              <option value="processing" ${rec.status==='processing'?'selected':''}>🟡 กำลังสำรวจ</option>
-              <option value="completed" ${rec.status==='completed'?'selected':''}>🟢 สำรวจแล้ว (เสร็จสิ้น)</option>
-            </select>
-            ${isCompleted ? `<span class="text-xs text-rose-500 block mt-1 font-bold">⚠️ สถานะสำรวจแล้วถูกล็อกตามนโยบายระบบ ห้ามลดระดับสถานะเด็ดขาด</span>` : ''}
-          </div>
-          <div class="sm:col-span-2"><label class="fl">หมายเหตุแชท LINE</label><textarea class="fi mt-1 text-sm" id="e-note" rows="3">${esc(rec.note)}</textarea></div>
-        </div>
-        <div class="flex gap-2 justify-end pt-2">
-          <button onclick="closeModal()" class="btn btn-ghost">ยกเลิก</button>
-          <button onclick="saveEdit('${id}')" class="btn btn-primary">บันทึกข้อมูล</button>
-        </div>
-      </div>
-    </div>`;
-  document.getElementById('modal-container').innerHTML = html;
-}
-
-function saveEdit(id) {
-  const rec = state.records.find(r => r.id === id);
-  if (!rec) return;
-
-  const newStatus = document.getElementById('e-status').value;
-
-  // Double Check Security: Prevent downgrade in logic
-  if (rec.status === 'completed' && newStatus !== 'completed') {
-    showToast('ห้ามเปลี่ยนสถานะสำรวจแล้ว (completed) เป็นสถานะอื่นโดยเด็ดขาด!', 'error');
-    return;
-  }
-
-  rec.name = document.getElementById('e-name').value.trim();
-  rec.address = document.getElementById('e-address').value.trim();
-  rec.soi = document.getElementById('e-soi').value.trim();
-  rec.phone = document.getElementById('e-phone').value.trim();
-  rec.lat = parseFloat(document.getElementById('e-lat').value) || null;
-  rec.lng = parseFloat(document.getElementById('e-lng').value) || null;
-  rec.map_url = document.getElementById('e-url').value.trim();
+function updateSurveyorMarker() {
+  if (!map || curLat === null || curLng === null) return;
+  const pos = [curLat, curLng];
   
-  if (rec.status !== 'completed' && newStatus === 'completed') {
-    // Upgraded to completed: save history
-    rec.status = 'completed';
-    rec.surveyed_at = new Date().toLocaleString('th-TH');
-    rec.surveyor = state.surveyorName;
-    if (state.userLat && rec.lat) {
-      rec.gps_lat = state.userLat;
-      rec.gps_lng = state.userLng;
-      rec.distance_when_done = parseFloat(haversine(state.userLat, state.userLng, rec.lat, rec.lng).toFixed(1));
-    }
-  } else if (rec.status !== 'completed') {
-    rec.status = newStatus;
+  if (!surveyorMarker) {
+    const pulseIcon = L.divIcon({
+      className: 'surveyor-gps-marker',
+      html: '<div class="gps-pulse-core"></div><div class="gps-pulse-ring"></div>',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+    surveyorMarker = L.marker(pos, { icon: pulseIcon }).addTo(map);
+    surveyorMarker.bindPopup('<b style="font-family:\'Sarabun\'">📍 ตำแหน่งปัจจุบันของคุณ</b>');
+  } else {
+    surveyorMarker.setLatLng(pos);
   }
+}
 
-  rec.note = document.getElementById('e-note').value.trim();
+function centerMapOnSurveyor() {
+  if (curLat !== null && curLng !== null && map) {
+    map.setView([curLat, curLng], 17);
+    if (surveyorMarker) surveyorMarker.openPopup();
+  } else {
+    toast("❌ ยังไม่สามารถระบุพิกัด GPS ได้");
+  }
+}
 
-  saveRecordToDB(rec).then(() => {
-    closeModal();
-    updateSoiDropdown();
-    renderStats();
-    applyFilters();
-    updateMapMarkers();
-    showToast('แก้ไขบันทึกสำเร็จ', 'success');
+function formatDistance(dist) {
+  if (dist === null || dist === undefined) return 'ไม่ทราบพิกัด';
+  if (dist < 1000) {
+    return `${dist.toFixed(1)} ม.`;
+  } else {
+    return `${(dist/1000).toFixed(2)} กม.`;
+  }
+}
+
+function openMap(url) { window.open(url, '_blank'); }
+
+function copyCoord(lat, lng) {
+  navigator.clipboard.writeText(`${lat},${lng}`).then(()=>toast('📋 คัดลอกพิกัดแล้ว')).catch(()=>{
+    const ta = document.createElement('textarea'); ta.value = `${lat},${lng}`;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    toast('📋 คัดลอกพิกัดแล้ว');
   });
 }
 
-function deleteRecord(id) {
-  if (!confirm('ยืนยันลบรายการสำรวจนี้อย่างถาวร?')) return;
-  deleteRecordFromDB(id).then(() => {
-    state.records = state.records.filter(r => r.id !== id);
-    updateSoiDropdown();
-    renderStats();
-    applyFilters();
-    updateMapMarkers();
-    showToast('ลบรายการสำเร็จ', 'info');
-  });
+function editItem(id) {
+  const item = items.find(i=>i.id===id);
+  if (!item) return;
+  editId = id;
+  document.getElementById('modalTitle').textContent = 'แก้ไขรายการ';
+  document.getElementById('fName').value = item.name||'';
+  document.getElementById('fAddress').value = item.address||'';
+  document.getElementById('fSoi').value = item.soi||'';
+  document.getElementById('fPhone').value = item.phone||'';
+  document.getElementById('fMapUrl').value = item.map_url||'';
+  document.getElementById('fLat').value = item.lat||'';
+  document.getElementById('fLng').value = item.lng||'';
+  document.getElementById('fNote').value = item.note||'';
+  document.getElementById('fStatus').value = item.status||'pending';
+  document.getElementById('editModal').classList.add('open');
 }
 
 function closeModal() {
-  document.getElementById('modal-container').innerHTML = '';
+  document.getElementById('editModal').classList.remove('open');
+  editId = null;
 }
 
-// ===================== NEW DASHBOARD & STATS =====================
-function renderStats() {
-  const total = state.records.length;
-  const done = state.records.filter(r => r.status === 'completed').length;
-  const processing = state.records.filter(r => r.status === 'processing').length;
-  const pending = state.records.filter(r => r.status === 'pending').length;
-  
-  // Calculate near < 50m count (only pending/processing targets)
-  let nearCount = 0;
-  if (state.userLat) {
-    nearCount = state.records.filter(r => r.status !== 'completed' && r.lat && r.lng && haversine(state.userLat, state.userLng, r.lat, r.lng) <= 50).length;
-  }
+function saveItem() {
+  const name = document.getElementById('fName').value.trim();
+  const address = document.getElementById('fAddress').value.trim();
+  const soi = document.getElementById('fSoi').value.trim();
+  const phone = document.getElementById('fPhone').value.trim();
+  const map_url = document.getElementById('fMapUrl').value.trim();
+  const lat = parseFloat(document.getElementById('fLat').value) || null;
+  const lng = parseFloat(document.getElementById('fLng').value) || null;
+  const note = document.getElementById('fNote').value.trim();
+  const status = document.getElementById('fStatus').value;
 
-  const pct = total ? Math.round(done / total * 100) : 0;
-  
-  // Counters HTML
-  const countersContainer = document.getElementById('dashboard-counters');
-  countersContainer.innerHTML = `
-    <div class="card rounded-2xl p-4 flex flex-col gap-1.5 border-slate-200">
-      <div class="text-c3 text-xs font-semibold uppercase tracking-wide">ทั้งหมด</div>
-      <div class="text-3xl font-extrabold text-c font-mono">${total}</div>
-      <div class="text-[11px] text-c3">แปลงทั้งหมดในคิว</div>
-    </div>
-    <div class="card rounded-2xl p-4 flex flex-col gap-1.5 border-rose-200 bg-rose-50/5">
-      <div class="text-rose-500 text-xs font-semibold uppercase tracking-wide">รอสำรวจ</div>
-      <div class="text-3xl font-extrabold font-mono text-rose-500">${pending}</div>
-      <div class="text-[11px] text-rose-400">ยังไม่ได้ลงพื้นที่</div>
-    </div>
-    <div class="card rounded-2xl p-4 flex flex-col gap-1.5 border-amber-200 bg-amber-50/5">
-      <div class="text-amber-500 text-xs font-semibold uppercase tracking-wide">กำลังสำรวจ</div>
-      <div class="text-3xl font-extrabold font-mono text-amber-500">${processing}</div>
-      <div class="text-[11px] text-amber-400">อยู่ระหว่างสำรวจ/ติดขัด</div>
-    </div>
-    <div class="card rounded-2xl p-4 flex flex-col gap-1.5 border-emerald-200 bg-emerald-50/5">
-      <div class="text-emerald-500 text-xs font-semibold uppercase tracking-wide">สำรวจแล้ว</div>
-      <div class="text-3xl font-extrabold font-mono text-emerald-500">${done}</div>
-      <div class="text-[11px] text-emerald-400">เสร็จสิ้นสมบูรณ์</div>
-    </div>
-    <div class="card rounded-2xl p-4 flex flex-col gap-1.5 border-blue-200 bg-blue-50/5 col-span-2 md:col-span-1">
-      <div class="text-blue-500 text-xs font-semibold uppercase tracking-wide">อยู่ใกล้ตัว (<50ม.)</div>
-      <div class="text-3xl font-extrabold font-mono text-blue-500">${nearCount}</div>
-      <div class="text-[11px] text-blue-400">แปลงสำรวจรอบตัวปัจจุบัน</div>
-    </div>
-    <div class="card rounded-2xl p-4 flex flex-col gap-1.5 border-brand-200 bg-brand-50/5 col-span-2 md:col-span-1">
-      <div class="text-brand-500 text-xs font-semibold uppercase tracking-wide">อัตราความสำเร็จ</div>
-      <div class="text-3xl font-extrabold font-mono text-brand-600">${pct}%</div>
-      <div class="text-[11px] text-brand-400">ความคืบหน้าภาพรวม</div>
-    </div>
-  `;
-
-  // Progress HTML
-  const progressContainer = document.getElementById('success-progress-card');
-  progressContainer.innerHTML = `
-    <div class="flex items-center justify-between text-sm">
-      <span class="font-bold text-c">📊 แถบแสดงอัตราความสำเร็จงานสำรวจภาคสนาม</span>
-      <span class="font-mono font-bold text-brand-600 dark:text-brand-400 text-base">${pct}%</span>
-    </div>
-    <div class="progress-track h-4 shadow-inner">
-      <div class="progress-fill h-4" style="width:${pct}%"></div>
-    </div>
-    <div class="text-xs text-c3 flex items-center justify-between">
-      <span>ดำเนินการเสร็จสิ้น ${done} จาก ${total} แปลงสำรวจ</span>
-      <span>คงเหลือที่ต้องดำเนินการอีก ${total - done} แปลง</span>
-    </div>
-  `;
-}
-
-// ===================== SOI DROPDOWN DROPDOWN =====================
-function updateSoiDropdown() {
-  const sois = [...new Set(state.records.map(r => r.soi).filter(Boolean))].sort();
-  const sel = document.getElementById('soi-filter');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">ซอย: ทั้งหมด</option>' + sois.map(s => `<option value="${esc(s)}" ${cur===s?'selected':''}>${s}</option>`).join('');
-}
-
-// ===================== TOAST NOTIFICATION =====================
-function showToast(msg, type = 'info') {
-  const colors = { success:'#10b981', error:'#ef4444', info:'#3b82f6', warning:'#f59e0b' };
-  const icons = {
-    success: '<polyline points="20 6 9 17 4 12"/>',
-    error: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
-    info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r=".5" fill="currentColor"/>',
-    warning: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r=".5" fill="currentColor"/>',
-  };
-  
-  const el = document.createElement('div');
-  el.className = 'toast-item';
-  el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${colors[type]}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">${icons[type]}</svg><span class="font-semibold">${msg}</span>`;
-  const container = document.getElementById('toast');
-  container.appendChild(el);
-  
-  setTimeout(() => {
-    el.style.opacity='0'; 
-    el.style.transform='translateY(8px)'; 
-    el.style.transition='all .25s ease'; 
-    setTimeout(() => el.remove(), 250); 
-  }, 4000);
-}
-
-// ===================== SURVEYOR NAME SETTINGS =====================
-function updateSurveyorName(name) {
-  state.surveyorName = name.trim() || 'ผู้สำรวจภาคสนาม';
-  localStorage.setItem(STORAGE_SURVEYOR_KEY, state.surveyorName);
-}
-
-// ===================== PROCESS LINE CHAT IMPORT =====================
-function parseLineExport(text) {
-  const lines = text.split(/\r?\n/);
-  const results = [];
-  
-  // Regex support multiple styles
-  const singleLineRx = /\[(\d{1,2}\/\d{1,2}\/\d{2,4}),\s*(\d{1,2}:\d{2})\]\s*([^:]+):\s*(.+)/;
-  const thaiLineRx = /^(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s+(\d{1,2}:\d{2})\s+(.+)/;
-  
-  let currentMsg = null;
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    
-    let m = line.match(singleLineRx);
-    if (m) {
-      if (currentMsg) results.push(currentMsg);
-      currentMsg = { date: m[1], time: m[2], sender: m[3].trim(), message: m[4].trim() };
-      continue;
-    }
-    
-    m = line.match(thaiLineRx);
-    if (m) {
-      if (currentMsg) results.push(currentMsg);
-      const nextLine = (lines[i+1] || '').trim();
-      const senderMsg = nextLine.match(/^(.+?):\s*(.+)/);
-      if (senderMsg) {
-        currentMsg = { date: m[1], time: m[2], sender: senderMsg[1].trim(), message: senderMsg[2].trim() };
-        i++;
-      } else {
-        currentMsg = { date: m[1], time: m[2], sender: m[3].trim(), message: nextLine };
-        i++;
+  if (editId) {
+    const item = items.find(i=>i.id===editId);
+    if (item) {
+      if (item.status === 'done' && status !== 'done') {
+        alert("⚠️ ห้าม Downgrade สถานะ 'สำรวจแล้ว' โดยเด็ดขาด!");
+        return;
       }
-      continue;
+      
+      Object.assign(item, {name,address,soi,phone,map_url,lat,lng,note,status});
+      
+      if (status === 'done' && !item.surveyed_at) {
+        item.surveyed_at = new Date().toISOString();
+        item.surveyor = document.getElementById('surveyorName').value || 'แมนนวล';
+        item.gps_lat = curLat;
+        item.gps_lng = curLng;
+        item.distance_when_done = (curLat && curLng && lat && lng) ? haversineMetres(curLat, curLng, lat, lng) : null;
+      }
     }
-    
-    if (currentMsg) {
-      currentMsg.message += '\n' + line;
-    }
-  }
-  if (currentMsg) results.push(currentMsg);
-  
-  const mapsRx = /https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl\/maps|google\.com\/maps|www\.google\.com\/maps|maps\.google\.com)[^\s]*/gi;
-  const mapMessages = results.filter(r => mapsRx.test(r.message));
-  
-  return mapMessages.map(r => {
-    mapsRx.lastIndex = 0;
-    const urlMatch = r.message.match(mapsRx);
-    const mapUrl = urlMatch ? urlMatch[0] : '';
-    const { lat, lng } = extractLatLng(mapUrl);
-    
-    return {
-      id: genId(),
-      name: r.sender,
-      address: extractAddress(r.message),
-      soi: extractSoi(r.message),
-      phone: extractPhone(r.message),
-      map_url: mapUrl,
+    toast('✅ บันทึกการแก้ไขแล้ว');
+  } else {
+    const newItem = {
+      id:uuid(),
+      name,
+      address,
+      soi,
+      phone,
+      map_url,
       lat,
       lng,
-      status: detectStatus(r.message),
-      note: r.message.replace(mapsRx, '').trim(),
-      created_at: r.date + ' ' + r.time,
+      note,
+      status,
+      created_at:new Date().toISOString().split('T')[0],
+      sender:'manual'
     };
+    
+    if (status === 'done') {
+      newItem.surveyed_at = new Date().toISOString();
+      newItem.surveyor = document.getElementById('surveyorName').value || 'แมนนวล';
+      newItem.gps_lat = curLat;
+      newItem.gps_lng = curLng;
+      newItem.distance_when_done = (curLat && curLng && lat && lng) ? haversineMetres(curLat, curLng, lat, lng) : null;
+    }
+    
+    items.push(newItem);
+    toast('➕ เพิ่มรายการใหม่แล้ว');
+  }
+  saveStorage(); closeModal(); renderAll();
+  if (map) updateMapMarkers();
+}
+
+function deleteItem(id) {
+  if (!confirm('ลบรายการนี้?')) return;
+  items = items.filter(i=>i.id!==id);
+  saveStorage(); renderAll(); toast('🗑️ ลบรายการแล้ว');
+}
+
+function markAllDone() {
+  const filtered = getFiltered();
+  if (!confirm(`Mark ${filtered.length} รายการว่าสำรวจแล้ว?`)) return;
+  filtered.forEach(i=>i.status='done');
+  saveStorage(); renderAll(); toast('✅ Mark All Done เรียบร้อย');
+}
+
+// ===== EXPORT / IMPORT =====
+function exportCSV() {
+  const headers = ['id','name','address','soi','phone','map_url','lat','lng','status','note','created_at'];
+  const rows = [headers.join(',')];
+  items.forEach(item => {
+    rows.push(headers.map(h=>`"${(item[h]||'').toString().replace(/"/g,'""')}"`).join(','));
+  });
+  download('survey_export.csv', rows.join('\n'), 'text/csv;charset=utf-8;');
+  toast('📊 Export CSV สำเร็จ');
+}
+
+function exportJSON() {
+  download('survey_backup.json', JSON.stringify(items, null, 2), 'application/json');
+  toast('📦 Export JSON สำเร็จ');
+}
+
+function download(filename, content, mime) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+content], {type:mime}));
+  a.download = filename; a.click();
+}
+
+function printReport() { window.print(); }
+
+function clearAll() {
+  if (!confirm('ลบข้อมูลทั้งหมด? การกระทำนี้ไม่สามารถยกเลิกได้')) return;
+  items = []; saveStorage(); renderAll(); toast('🗑️ ล้างข้อมูลทั้งหมดแล้ว');
+}
+
+// ===== TOAST =====
+function toast(msg) {
+  const w = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  w.appendChild(t);
+  setTimeout(()=>t.remove(), 3200);
+}
+
+// ===== ESC =====
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===== EVENTS =====
+function bindEvents() {
+  // Tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      const tid = tab.dataset.tab;
+      document.querySelectorAll('.main > div[id^="tab-"]').forEach(d=>d.style.display='none');
+      document.getElementById('tab-'+tid).style.display='';
+      
+      visibleCount = 50; // Reset pagination count on tab changes
+      
+      if (tid === 'report') renderReport();
+      if (tid === 'map') {
+        initMap();
+        setTimeout(() => {
+          if (map) map.invalidateSize();
+        }, 100);
+      }
+    });
+  });
+
+  // Search and Filters (reset page offset for performance)
+  document.getElementById('searchInput').addEventListener('input', e => {
+    searchQ = e.target.value; visibleCount = 50; renderList();
+  });
+  document.getElementById('filterStatus').addEventListener('change', e => {
+    filterStatus = e.target.value; visibleCount = 50; renderList();
+  });
+  document.getElementById('filterSoi').addEventListener('change', e => {
+    filterSoi = e.target.value; visibleCount = 50; renderSoiChips(); renderList();
+  });
+
+  // Camera capture event processor (processes base64 and compresses via canvas)
+  document.getElementById('cameraInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file || !photoTargetId) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const img = new Image();
+      img.onload = function() {
+        const maxDim = 400;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        
+        const item = items.find(i => i.id === photoTargetId);
+        if (item) {
+          if (!item.images) item.images = [];
+          item.images.push(compressedBase64);
+          saveStorage();
+          renderAll();
+          toast("📸 บันทึกรูปถ่ายเรียบร้อย");
+        }
+        photoTargetId = null;
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Mark all done
+  document.getElementById('markAllDoneBtn').addEventListener('click', markAllDone);
+
+  // Add button
+  document.getElementById('addBtn').addEventListener('click', () => {
+    editId = null;
+    document.getElementById('modalTitle').textContent = 'เพิ่มรายการ';
+    ['fName','fAddress','fSoi','fPhone','fMapUrl','fLat','fLng','fNote'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('fStatus').value = 'pending';
+    document.getElementById('editModal').classList.add('open');
+  });
+
+  // Theme toggle
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    darkMode = !darkMode;
+    document.documentElement.setAttribute('data-theme', darkMode?'':'light');
+    document.getElementById('themeToggle').textContent = darkMode?'🌙':'☀️';
+    localStorage.setItem(THEME_KEY, darkMode?'dark':'light');
+  });
+
+  // Export menu
+  document.getElementById('exportMenuBtn').addEventListener('click', () => {
+    const m = prompt('เลือก:\n1 = Export CSV\n2 = Export JSON\n3 = Import JSON\n4 = กู้คืน Backup ล่าสุด');
+    if (m==='1') exportCSV();
+    else if (m==='2') exportJSON();
+    else if (m==='3') document.getElementById('importInput').click();
+    else if (m==='4') restoreLatestBackup();
+  });
+
+  // File upload
+  const zone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  zone.addEventListener('click', ()=>fileInput.click());
+  zone.addEventListener('dragover', e=>{e.preventDefault();zone.classList.add('drag');});
+  zone.addEventListener('dragleave', ()=>zone.classList.remove('drag'));
+  zone.addEventListener('drop', e=>{e.preventDefault();zone.classList.remove('drag');handleFile(e.dataTransfer.files[0]);});
+  fileInput.addEventListener('change', e=>handleFile(e.target.files[0]));
+
+  // Import JSON
+  document.getElementById('importInput').addEventListener('change', e=>{
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (Array.isArray(data)) {
+          items = data; saveStorage(); renderAll();
+          toast('📥 Import สำเร็จ ' + data.length + ' รายการ');
+        } else toast('❌ ไฟล์ JSON ไม่ถูกต้อง');
+      } catch { toast('❌ อ่านไฟล์ไม่ได้'); }
+    };
+    r.readAsText(f);
+  });
+
+  // Close modal on overlay click
+  document.getElementById('editModal').addEventListener('click', e=>{
+    if (e.target === document.getElementById('editModal')) closeModal();
   });
 }
 
-function extractLatLng(url) {
-  if (!url) return { lat: null, lng: null };
-  let m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-  m = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-  m = url.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-  m = url.match(/destination=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-  return { lat: null, lng: null };
-}
+function handleFile(file) {
+  if (!file) return;
+  const parseDiv = document.getElementById('parseStatus');
+  const parseResult = document.getElementById('parseResult');
+  parseDiv.style.display = '';
+  parseResult.innerHTML = '<div class="loading"><div class="spinner"></div><div>🔒 สำรองข้อมูลเดิม...</div></div>';
 
-function extractAddress(text) {
-  const patterns = [
-    /บ้านเลขที่\s*(\d+[\w\/\-]*(?:\s+หมู่\s*\d+)?)/,
-    /เลขที่\s*(\d+[\w\/\-]*(?:\s+หมู่\s*\d+)?)/,
-    /(\d+\/\d+(?:\s+หมู่\s*\d+)?)/,
-    /(\d+\s+หมู่\s*\d+)/,
-  ];
-  for (const p of patterns) {
-    const m = text.match(p);
-    if (m) return m[1].trim();
-  }
-  return '';
-}
-
-function extractPhone(text) {
-  const m = text.match(/0\d{8,9}/);
-  return m ? m[0] : '';
-}
-
-function extractSoi(text) {
-  const m = text.match(/ซ(?:อย|\.)\s*([^\s,]+)/);
-  if (m) return 'ซอย' + m[1].trim();
-  const m2 = text.match(/ซอย\s*([^\s,]+)/);
-  if (m2) return 'ซอย' + m2[1].trim();
-  return '';
-}
-
-function detectStatus(text) {
-  if (/รออยู่บ้าน|อยู่บ้านแล้ว/.test(text)) return 'processing';
-  if (/สำรวจแล้ว|เรียบร้อย|เสร็จแล้ว/.test(text)) return 'completed';
-  return 'pending';
-}
-
-function handleFileDrop(e) {
-  e.preventDefault();
-  document.getElementById('import-drop').classList.remove('dragging');
-  const file = e.dataTransfer.files[0];
-  if (file && file.name.endsWith('.txt')) {
-    readTextFile(file);
-  } else {
-    showToast('กรุณาวางเฉพาะไฟล์นามสกุล .txt เท่านั้น', 'error');
-  }
-}
-
-function handleFileSelect(e) {
-  const file = e.target.files[0];
-  if (file) readTextFile(file);
-}
-
-function readTextFile(file) {
   const reader = new FileReader();
-  reader.onload = ev => {
-    document.getElementById('import-text').value = ev.target.result;
-    showToast('โหลดเนื้อหาไฟล์นำเข้าแล้ว: ' + file.name, 'success');
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const fileName = file.name;
+
+    // Step 1: Auto-backup existing data BEFORE any change
+    autoBackup(fileName);
+
+    parseResult.innerHTML = '<div class="loading"><div class="spinner"></div><div>🔍 วิเคราะห์ข้อความ...</div></div>';
+
+    setTimeout(() => {
+      // Step 2: Parse new file
+      const parsed = parseLineTxt(text);
+
+      // Step 3: Smart merge (preserves all existing statuses)
+      const stats = mergeItems(parsed, fileName);
+
+      // Step 4: Save
+      saveStorage();
+      renderAll();
+
+      // Step 5: Log this import
+      const logEntry = {
+        ts: new Date().toISOString(),
+        file: fileName,
+        lines: text.split('\n').length,
+        parsed: parsed.length,
+        added: stats.added,
+        merged: stats.merged,
+        skipped: stats.skipped,
+        fieldsUpdated: stats.fieldsUpdated,
+        totalAfter: items.length,
+        done: items.filter(i=>i.status==='done').length,
+        pending: items.filter(i=>i.status==='pending').length,
+        inprogress: items.filter(i=>i.status==='inprogress').length
+      };
+      saveImportLog(logEntry);
+
+      // Step 6: Show detailed result
+      const prevTotal = items.length - stats.added; // approx
+      parseResult.innerHTML = `
+        <div style="background:var(--green-bg);border:1px solid var(--green2);border-radius:10px;padding:14px;margin-bottom:14px">
+          <div style="color:var(--green-text);font-weight:700;font-size:14px;margin-bottom:6px">✅ Import สำเร็จ · ${fileName}</div>
+          <div style="color:var(--text3);font-size:11px">${new Date().toLocaleString('th-TH')} · Backup อัตโนมัติแล้ว</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+          <div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center">
+            <div style="font-size:24px;font-weight:700;color:var(--green-text);font-family:'IBM Plex Mono',monospace">+${stats.added}</div>
+            <div style="font-size:11px;color:var(--text3)">รายการใหม่</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center">
+            <div style="font-size:24px;font-weight:700;color:var(--yellow-text);font-family:'IBM Plex Mono',monospace">${stats.merged}</div>
+            <div style="font-size:11px;color:var(--text3)">Merge สำเร็จ</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center">
+            <div style="font-size:24px;font-weight:700;color:var(--text2);font-family:'IBM Plex Mono',monospace">${stats.skipped}</div>
+            <div style="font-size:11px;color:var(--text3)">ข้อมูลซ้ำ (ไม่เปลี่ยน)</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center">
+            <div style="font-size:24px;font-weight:700;color:var(--accent2);font-family:'IBM Plex Mono',monospace">${stats.fieldsUpdated}</div>
+            <div style="font-size:11px;color:var(--text3)">Field อัปเดต</div>
+          </div>
+        </div>
+
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <div style="background:var(--bg3);padding:8px 12px;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">สถานะงานหลัง Import</div>
+          <div class="report-row" style="padding:10px 12px">
+            <span>📋 วิเคราะห์จากไฟล์</span><strong>${text.split('\n').length} บรรทัด · ${parsed.length} รายการมีแผนที่</strong>
+          </div>
+          <div class="report-row" style="padding:10px 12px">
+            <span>📊 รวมทั้งหมดในระบบ</span><strong style="color:var(--accent2)">${items.length} รายการ</strong>
+          </div>
+          <div class="report-row" style="padding:10px 12px">
+            <span>🟢 สำรวจแล้ว</span><strong style="color:var(--green-text)">${logEntry.done} รายการ</strong>
+          </div>
+          <div class="report-row" style="padding:10px 12px">
+            <span>🟡 กำลังสำรวจ</span><strong style="color:var(--yellow-text)">${logEntry.inprogress} รายการ</strong>
+          </div>
+          <div class="report-row" style="padding:10px 12px;border-bottom:none">
+            <span>🔴 รอสำรวจ</span><strong style="color:var(--red-text)">${logEntry.pending} รายการ</strong>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;padding:10px 12px;background:var(--blue-bg);border-radius:8px;font-size:12px;color:var(--accent2)">
+          🔒 Backup อัตโนมัติสำเร็จ · ${prevTotal} รายการเดิมถูกเก็บไว้
+          <button class="btn-sm" onclick="restoreLatestBackup()" style="margin-left:8px;border-color:var(--accent);color:var(--accent2)">กู้คืน Backup</button>
+        </div>
+
+        ${renderImportLog()}`;
+
+      toast(`✅ นำเข้าสำเร็จ · ใหม่ +${stats.added} · Merge ${stats.merged} · สถานะเดิมปลอดภัย 🔒`);
+
+      // Switch to list tab after delay
+      setTimeout(()=>{
+        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+        document.querySelector('[data-tab="list"]').classList.add('active');
+        document.querySelectorAll('.main > div[id^="tab-"]').forEach(d=>d.style.display='none');
+        document.getElementById('tab-list').style.display='';
+      }, 2000);
+    }, 150);
   };
   reader.readAsText(file, 'UTF-8');
 }
 
-// Register UTM Zones globally
-try {
-  proj4.defs("EPSG:32647", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs");
-  proj4.defs("EPSG:32648", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
-} catch(e) {
-  console.warn("Proj4 definitions deferred");
+function renderImportLog() {
+  const log = getImportLog();
+  if (!log.length) return '';
+  const rows = log.slice(0,5).map((l,i) => `
+    <div class="report-row" style="padding:8px 12px;font-size:12px">
+      <span style="color:var(--text3)">${i===0?'📌 ล่าสุด':'  '} ${new Date(l.ts).toLocaleString('th-TH',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'})}</span>
+      <span>${l.file.substring(0,20)} · <span style="color:var(--green-text)">+${l.added}</span> / M${l.merged}</span>
+    </div>`).join('');
+  return `<div style="margin-top:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+    <div style="background:var(--bg3);padding:8px 12px;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">ประวัติการ Import</div>
+    ${rows}
+  </div>`;
 }
 
-function detectFormat(text) {
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  if (lines.length === 0) return 'empty';
-  
-  const firstLine = lines[0].toLowerCase();
-  const csvHeaders = ['lat', 'lng', 'latitude', 'longitude', 'name', 'address', 'phone', 'x', 'y', 'easting', 'northing', 'ชื่อ', 'บ้านเลขที่', 'พิกัด'];
-  const hasCsvHeader = csvHeaders.some(h => firstLine.includes(h));
-  
-  const delimiter = detectDelimiter(lines[0]);
-  const splitCount = lines[0].split(delimiter).length;
-  
-  if (hasCsvHeader && splitCount > 1) {
-    return 'csv';
-  }
-  return 'line';
-}
-
-function detectDelimiter(firstLine) {
-  const commas = (firstLine.match(/,/g) || []).length;
-  const tabs = (firstLine.match(/\t/g) || []).length;
-  const semicolons = (firstLine.match(/;/g) || []).length;
-  if (tabs > commas && tabs > semicolons) return '\t';
-  if (semicolons > commas && semicolons > tabs) return ';';
-  return ',';
-}
-
-function parseCSV(text) {
-  const lines = [];
-  let row = [""];
-  let inQuotes = false;
-  
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    const next = text[i+1];
-    
-    if (c === '"') {
-      if (inQuotes && next === '"') {
-        row[row.length - 1] += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (c === ',' && !inQuotes) {
-      row.push("");
-    } else if ((c === '\r' || c === '\n') && !inQuotes) {
-      if (c === '\r' && next === '\n') i++;
-      lines.push(row);
-      row = [""];
-    } else {
-      row[row.length - 1] += c;
-    }
-  }
-  if (row.length > 1 || row[0] !== "") {
-    lines.push(row);
-  }
-  return lines;
-}
-
-function mapHeaders(headers) {
-  const mapping = {
-    name: -1,
-    address: -1,
-    soi: -1,
-    phone: -1,
-    note: -1,
-    lat: -1,
-    lng: -1,
-    zone: -1
-  };
-  
-  const nameSynonyms = ['name', 'ชื่อ', 'sender', 'ผู้ส่ง', 'customer', 'ผู้รับการสำรวจ'];
-  const addressSynonyms = ['address', 'บ้านเลขที่', 'เลขที่', 'ที่อยู่', 'parcel_no', 'เลขแปลง', 'แปลง', 'house_no'];
-  const soiSynonyms = ['soi', 'ซอย', 'หมู่บ้าน'];
-  const phoneSynonyms = ['phone', 'tel', 'เบอร์โทร', 'เบอร์', 'โทร', 'telephone'];
-  const noteSynonyms = ['note', 'หมายเหตุ', 'message', 'ข้อความ', 'details', 'รายละเอียด'];
-  
-  const latSynonyms = ['lat', 'latitude', 'y', 'utm_northing', 'utm_n', 'northing', 'พิกัด_n', 'n'];
-  const lngSynonyms = ['lng', 'lon', 'longitude', 'x', 'utm_easting', 'utm_e', 'easting', 'e'];
-  const zoneSynonyms = ['zone', 'utm_zone', 'โซน'];
-  
-  headers.forEach((h, index) => {
-    const clean = h.trim().toLowerCase();
-    
-    if (nameSynonyms.some(s => clean === s || clean.includes(s))) mapping.name = index;
-    if (addressSynonyms.some(s => clean === s || clean.includes(s))) mapping.address = index;
-    if (soiSynonyms.some(s => clean === s || clean.includes(s))) mapping.soi = index;
-    if (phoneSynonyms.some(s => clean === s || clean.includes(s))) mapping.phone = index;
-    if (noteSynonyms.some(s => clean === s || clean.includes(s))) mapping.note = index;
-    
-    if (latSynonyms.some(s => clean === s || clean.includes(s))) mapping.lat = index;
-    if (lngSynonyms.some(s => clean === s || clean.includes(s))) mapping.lng = index;
-    if (zoneSynonyms.some(s => clean === s || clean.includes(s))) mapping.zone = index;
-  });
-  
-  return mapping;
-}
-
-function convertUTMToWGS84(easting, northing, zone = null) {
-  try {
-    proj4.defs("EPSG:32647", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs");
-    proj4.defs("EPSG:32648", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
-  } catch(e) {}
-
-  if (zone === 47 || zone === '47' || zone === '47N') {
-    const p = proj4("EPSG:32647", "WGS84", [easting, northing]);
-    return { lat: p[1], lng: p[0], zone: 47 };
-  }
-  if (zone === 48 || zone === '48' || zone === '48N') {
-    const p = proj4("EPSG:32648", "WGS84", [easting, northing]);
-    return { lat: p[1], lng: p[0], zone: 48 };
-  }
-  
-  // Auto detect zone based on Thailand bounding box
-  try {
-    const p47 = proj4("EPSG:32647", "WGS84", [easting, northing]);
-    const lat47 = p47[1];
-    const lng47 = p47[0];
-    if (lat47 >= 5.5 && lat47 <= 20.5 && lng47 >= 96.0 && lng47 <= 102.0) {
-      return { lat: lat47, lng: lng47, zone: 47 };
-    }
-  } catch(e) {}
-  
-  try {
-    const p48 = proj4("EPSG:32648", "WGS84", [easting, northing]);
-    const lat48 = p48[1];
-    const lng48 = p48[0];
-    if (lat48 >= 5.5 && lat48 <= 20.5 && lng48 >= 102.0 && lng48 <= 108.0) {
-      return { lat: lat48, lng: lng48, zone: 48 };
-    }
-  } catch(e) {}
-  
-  // Default fallback
-  try {
-    const p = proj4("EPSG:32647", "WGS84", [easting, northing]);
-    return { lat: p[1], lng: p[0], zone: 47 };
-  } catch(e) {
-    return { lat: null, lng: null, zone: null };
-  }
-}
-
-function parseRowCoordinates(row, mapping) {
-  let latVal = "";
-  let lngVal = "";
-  let zoneVal = null;
-  
-  const cleanStr = (s) => (s || '').toString().trim().replace(/['"\s]/g, '');
-  
-  if (mapping.lat !== -1) latVal = cleanStr(row[mapping.lat]);
-  if (mapping.lng !== -1) lngVal = cleanStr(row[mapping.lng]);
-  if (mapping.zone !== -1) zoneVal = cleanStr(row[mapping.zone]);
-  
-  // Check if comma-separated lat/lng in a single field
-  if (latVal && !lngVal && latVal.includes(',')) {
-    const parts = latVal.split(',');
-    latVal = cleanStr(parts[0]);
-    lngVal = cleanStr(parts[1]);
-  } else if (lngVal && !latVal && lngVal.includes(',')) {
-    const parts = lngVal.split(',');
-    latVal = cleanStr(parts[0]);
-    lngVal = cleanStr(parts[1]);
-  }
-  
-  if (!latVal && !lngVal) {
-    return { lat: null, lng: null, status: 'invalid', reason: 'ไม่พบข้อมูลพิกัด (ค่าพิกัดว่าง)' };
-  }
-  if (!latVal) {
-    return { lat: null, lng: null, status: 'invalid', reason: 'ไม่พบข้อมูลพิกัด (ละติจูดว่าง)' };
-  }
-  if (!lngVal) {
-    return { lat: null, lng: null, status: 'invalid', reason: 'ไม่พบข้อมูลพิกัด (ลองจิจูดว่าง)' };
-  }
-  
-  let lat = parseFloat(latVal);
-  let lng = parseFloat(lngVal);
-  
-  if (isNaN(lat)) {
-    return { lat: null, lng: null, status: 'invalid', reason: `รูปแบบตัวเลขละติจูดผิด: "${latVal}"` };
-  }
-  if (isNaN(lng)) {
-    return { lat: null, lng: null, status: 'invalid', reason: `รูปแบบตัวเลขลองจิจูดผิด: "${lngVal}"` };
-  }
-  
-  // Detect UTM coordinates (usually large numbers)
-  const isUTM = Math.abs(lat) > 1000 || Math.abs(lng) > 1000;
-  
-  if (isUTM) {
-    let easting = lng;
-    let northing = lat;
-    
-    // Switch if swapped (Easting is around 500,000, Northing is around 1,500,000 in Thailand)
-    if (lat < lng) {
-      easting = lat;
-      northing = lng;
-    }
-    
-    if (easting < 100000 || easting > 900000 || northing < 100000 || northing > 3000000) {
-      return { lat: null, lng: null, status: 'invalid', reason: `ค่า UTM ไม่ถูกต้อง (ไม่อยู่ในช่วงประเทศไทย: E=${easting}, N=${northing})` };
-    }
-    
-    const converted = convertUTMToWGS84(easting, northing, zoneVal);
-    if (!converted.lat || !converted.lng) {
-      return { lat: null, lng: null, status: 'invalid', reason: 'ค่า UTM ไม่ถูกต้อง (แปลงพิกัดพัง)' };
-    }
-    lat = converted.lat;
-    lng = converted.lng;
-  }
-  
-  // Validate Thailand bounds (Lat: 5.5 to 20.5, Lng: 97.0 to 106.0)
-  const isInsideThailand = lat >= 5.5 && lat <= 20.5 && lng >= 97.0 && lng <= 106.0;
-  if (!isInsideThailand) {
-    return { lat, lng, status: 'invalid', reason: `พิกัดอยู่นอกขอบเขตประเทศไทย: Lat=${lat.toFixed(6)}, Lng=${lng.toFixed(6)}` };
-  }
-  
-  return { lat, lng, status: 'valid', reason: '✓ ถูกต้อง' };
-}
-
-function processImport() {
-  const text = document.getElementById('import-text').value;
-  if (!text.trim()) {
-    showToast('ไม่พบเนื้อหาข้อความ กรุณาวางข้อความหรืออัปโหลดไฟล์', 'error');
-    return;
-  }
-
-  const format = detectFormat(text);
-  let parsed = [];
-  let mappingErrors = [];
-
-  if (format === 'csv') {
-    const csvRows = parseCSV(text);
-    if (csvRows.length < 2) {
-      showToast('ไฟล์ข้อมูลแบบตารางต้องมีอย่างน้อย 2 แถว (หัวคอลัมน์ และ ข้อมูล)', 'error');
-      return;
-    }
-    const headers = csvRows[0];
-    const mapping = mapHeaders(headers);
-
-    if (mapping.lat === -1 && mapping.lng === -1) {
-      mappingErrors.push("ไม่พบคอลัมน์พิกัดในไฟล์ (ต้องการ Latitude, Longitude, UTM_N, UTM_E, X, Y)");
-    } else {
-      if (mapping.lat === -1) mappingErrors.push("ไม่พบคอลัมน์พิกัดละติจูด (Latitude/UTM_N/Y)");
-      if (mapping.lng === -1) mappingErrors.push("ไม่พบคอลัมน์พิกัดลองจิจูด (Longitude/UTM_E/X)");
-    }
-
-    for (let i = 1; i < csvRows.length; i++) {
-      const row = csvRows[i];
-      if (row.length === 0 || (row.length === 1 && row[0] === "")) continue;
-
-      // Ensure row matches headers length
-      while (row.length < headers.length) row.push("");
-
-      const nameVal = mapping.name !== -1 ? row[mapping.name].trim() : '';
-      const addressVal = mapping.address !== -1 ? row[mapping.address].trim() : '';
-      const soiVal = mapping.soi !== -1 ? row[mapping.soi].trim() : '';
-      const phoneVal = mapping.phone !== -1 ? row[mapping.phone].trim() : '';
-      const noteVal = mapping.note !== -1 ? row[mapping.note].trim() : '';
-
-      let coordResult;
-      if (mapping.lat === -1 || mapping.lng === -1) {
-        coordResult = { lat: null, lng: null, status: 'invalid', reason: 'ไม่พบหัวคอลัมน์พิกัด' };
-      } else {
-        coordResult = parseRowCoordinates(row, mapping);
-      }
-
-      parsed.push({
-        id: genId(),
-        name: nameVal || 'ไม่ระบุชื่อ',
-        address: addressVal || '',
-        soi: soiVal || '',
-        phone: phoneVal || '',
-        lat: coordResult.lat,
-        lng: coordResult.lng,
-        status: detectStatus(noteVal),
-        note: noteVal,
-        created_at: new Date().toLocaleString('th-TH'),
-        import_status: coordResult.status,
-        import_reason: coordResult.reason,
-        row_num: i + 1
-      });
-    }
-  } else {
-    // Parse LINE Chat History
-    const parsedLine = parseLineExport(text);
-    parsed = parsedLine.map((r, index) => {
-      let status = 'valid';
-      let reason = '✓ ถูกต้อง';
-      if (!r.lat || !r.lng) {
-        status = 'invalid';
-        reason = 'ไม่พบข้อมูลพิกัดในข้อความแชท';
-      } else {
-        const isInside = r.lat >= 5.5 && r.lat <= 20.5 && r.lng >= 97.0 && r.lng <= 106.0;
-        if (!isInside) {
-          status = 'invalid';
-          reason = `พิกัดอยู่นอกประเทศไทย: Lat=${r.lat.toFixed(6)}, Lng=${r.lng.toFixed(6)}`;
-        }
-      }
-      return {
-        ...r,
-        import_status: status,
-        import_reason: reason,
-        row_num: index + 1
-      };
-    });
-  }
-
-  // Debug Log (Requirement 9)
-  parsed.forEach(item => {
-    console.log("LAT =", item.lat);
-    console.log("LNG =", item.lng);
-    console.log("Imported =", item);
-  });
-
-  if (parsed.length === 0) {
-    showToast('วิเคราะห์ข้อมูลสำรวจไม่สำเร็จ (แถวข้อมูลเป็นศูนย์)', 'error');
-    return;
-  }
-
-  // Calculate stats
-  const total = parsed.length;
-  const valid = parsed.filter(p => p.import_status === 'valid').length;
-  const missing = parsed.filter(p => p.import_status === 'invalid' && p.import_reason.includes('ว่าง')).length;
-  const failed = total - valid - missing;
-
-  state.tempImportRecords = parsed;
-
-  // Open the Preview modal overlay
-  renderImportPreviewScreen(total, valid, missing, failed, mappingErrors);
-}
-
-function renderImportPreviewScreen(total, valid, missing, failed, mappingErrors) {
-  const modalContainer = document.getElementById('modal-container');
-  if (!modalContainer) return;
-
-  const first10 = state.tempImportRecords.slice(0, 10);
-  const errorRows = state.tempImportRecords.filter(p => p.import_status !== 'valid');
-
-  let errorsHtml = '';
-  if (mappingErrors.length > 0) {
-    errorsHtml = `
-      <div class="rounded-xl p-3.5 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-sm font-semibold space-y-1">
-        <div class="font-bold flex items-center gap-1">⚠️ ข้อผิดพลาดของโครงสร้างคอลัมน์:</div>
-        ${mappingErrors.map(e => `<div>• ${e}</div>`).join('')}
-      </div>`;
-  } else if (errorRows.length > 0) {
-    errorsHtml = `
-      <div class="rounded-xl p-3.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-400 text-xs space-y-1.5 max-h-[150px] overflow-y-auto">
-        <div class="font-bold text-sm flex items-center gap-1">⚠️ รายการที่มีปัญหาพิกัด (${errorRows.length} รายการ):</div>
-        ${errorRows.map(r => `<div>• แถวที่ ${r.row_num}: บ้านเลขที่/ชื่อ "${r.address || r.name}" - <span class="font-bold text-rose-500">${r.import_reason}</span></div>`).join('')}
-      </div>`;
-  }
-
-  const previewTableHtml = first10.map(r => {
-    let statusClass = "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900";
-    let statusText = "✓ ถูกต้อง";
-    if (r.import_status !== 'valid') {
-      if (r.import_reason.includes('ว่าง')) {
-        statusClass = "text-slate-500 bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800";
-        statusText = "✗ ไม่พบพิกัด";
-      } else {
-        statusClass = "text-rose-500 bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900";
-        statusText = "✗ พิกัดไม่ถูกต้อง";
-      }
-    }
-
-    return `
-      <tr class="border-b border-c text-xs">
-        <td class="py-2.5 px-2 font-medium text-c truncate max-w-[100px]">${esc(r.name)}</td>
-        <td class="py-2.5 px-2 text-c truncate max-w-[100px]">${esc(r.address || '—')}</td>
-        <td class="py-2.5 px-2 font-mono text-c">${r.lat ? r.lat.toFixed(6) : '—'}</td>
-        <td class="py-2.5 px-2 font-mono text-c">${r.lng ? r.lng.toFixed(6) : '—'}</td>
-        <td class="py-2.5 px-2">
-          <span class="px-2 py-0.5 rounded border text-[10px] font-bold ${statusClass}" title="${esc(r.import_reason)}">${statusText}</span>
-        </td>
-      </tr>
-    `;
-  }).join('');
-
-  modalContainer.innerHTML = `
-    <div class="modal-bg animate-fade" onclick="if(event.target===this)closeModal()">
-      <div class="modal-box animate-slide p-6 space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="font-bold text-lg text-c">📋 ตรวจสอบก่อนนำเข้าข้อมูล</h3>
-          <button onclick="closeModal()" class="btn btn-ghost p-1.5 rounded-lg" style="min-height:36px; min-width:36px">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+function showBackupList() {
+  const panel = document.getElementById('backupListPanel');
+  let backups = [];
+  try { backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]'); } catch {}
+  if (!backups.length) { panel.style.display=''; panel.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">ยังไม่มี Backup</div>'; return; }
+  const isOpen = panel.style.display !== 'none' && panel.innerHTML;
+  if (isOpen) { panel.style.display='none'; panel.innerHTML=''; return; }
+  panel.style.display='';
+  panel.innerHTML = `<div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:4px">
+    <div style="background:var(--bg3);padding:8px 12px;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase">Backup อัตโนมัติ (เก็บ 5 ล่าสุด)</div>
+    ${backups.map((b,i)=>`
+      <div class="report-row" style="padding:10px 12px;align-items:center">
+        <div>
+          <div style="font-size:13px;font-weight:500">${new Date(b.ts).toLocaleString('th-TH')}</div>
+          <div style="font-size:11px;color:var(--text3)">${b.file} · ${b.count} รายการ</div>
         </div>
-
-        <!-- Report (Requirement 8) -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-c text-center">
-          <div>
-            <div class="text-[10px] text-c3 font-bold uppercase">ข้อมูลทั้งหมด</div>
-            <div class="text-2xl font-bold font-mono text-c">${total}</div>
-          </div>
-          <div>
-            <div class="text-[10px] text-emerald-500 font-bold uppercase">พิกัดถูกต้อง</div>
-            <div class="text-2xl font-bold font-mono text-emerald-500">${valid}</div>
-          </div>
-          <div>
-            <div class="text-[10px] text-slate-500 font-bold uppercase">ไม่มีพิกัด</div>
-            <div class="text-2xl font-bold font-mono text-slate-500">${missing}</div>
-          </div>
-          <div>
-            <div class="text-[10px] text-rose-500 font-bold uppercase">นำเข้าไม่สำเร็จ</div>
-            <div class="text-2xl font-bold font-mono text-rose-500">${failed}</div>
-          </div>
-        </div>
-
-        <!-- Detailed Warning List (Requirement 10) -->
-        ${errorsHtml}
-
-        <!-- Preview Table (Requirement 6) -->
-        <div class="space-y-1.5">
-          <div class="font-bold text-sm text-c flex justify-between">
-            <span>ตัวอย่างข้อมูล 10 รายการแรก:</span>
-            <span class="text-xs text-c3 font-normal">แสดงคอลัมน์สำคัญ</span>
-          </div>
-          <div class="overflow-x-auto rounded-xl border border-c max-h-[200px]">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="bg-slate-50 dark:bg-slate-900 text-[10px] text-c3 uppercase tracking-wider font-bold border-b border-c">
-                  <th class="py-2 px-2">ชื่อ</th>
-                  <th class="py-2 px-2">เลขแปลง</th>
-                  <th class="py-2 px-2">Latitude</th>
-                  <th class="py-2 px-2">Longitude</th>
-                  <th class="py-2 px-2">สถานะ</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${previewTableHtml}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Action buttons -->
-        <div class="flex gap-2 justify-end pt-2">
-          <button onclick="closeModal()" class="btn btn-ghost">ยกเลิก</button>
-          <button onclick="confirmImport()" class="btn btn-primary" ${(valid === 0 && missing === 0) ? 'disabled' : ''}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            ยืนยันนำเข้า (${valid + missing} รายการ)
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
+        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px" onclick="restoreBackup(${i})">⏪ กู้คืน</button>
+      </div>`).join('')}
+  </div>`;
 }
 
-function confirmImport() {
-  if (!state.tempImportRecords || state.tempImportRecords.length === 0) return;
-
-  const validRecords = state.tempImportRecords.filter(p => p.import_status === 'valid');
-  const missingRecords = state.tempImportRecords.filter(p => p.import_status === 'invalid' && p.import_reason.includes('ว่าง'));
-  
-  const toImport = [...validRecords, ...missingRecords];
-
-  const total = state.tempImportRecords.length;
-  const valid = validRecords.length;
-  const missing = missingRecords.length;
-  const failed = total - valid - missing;
-
-  // Merge records safely (no downgrades)
-  const { added, merged } = mergeRecords(toImport);
-
-  saveRecordsBatchToDB(state.records).then(() => {
-    updateSoiDropdown();
-    renderStats();
-    applyFilters();
-    updateMapMarkers();
-
-    // Close preview modal
-    closeModal();
-
-    // Clear input
-    document.getElementById('import-text').value = '';
-
-    // Final Import toast report (Requirement 8)
-    showToast(`นำเข้าเสร็จสิ้น: ทั้งหมด ${total} | มีพิกัด ${valid} | ไม่มีพิกัด ${missing} | ล้มเหลว ${failed}`, 'success');
-
-    // Focus first valid item on Leaflet map (Requirement 7)
-    if (valid > 0 && state.mapInstance) {
-      const firstValid = validRecords[0];
-      switchTab('map');
-      setTimeout(() => {
-        state.mapInstance.setView([firstValid.lat, firstValid.lng], 17);
-        const marker = state.mapMarkers[firstValid.lat + ',' + firstValid.lng];
-        if (marker) marker.openPopup();
-      }, 100);
-    } else {
-      switchTab('queue');
-    }
-
-    state.tempImportRecords = [];
-  });
+function restoreBackup(index) {
+  try {
+    const backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+    const b = backups[index];
+    if (!b) { toast('❌ ไม่พบ Backup'); return; }
+    if (!confirm(`กู้คืน Backup จาก ${new Date(b.ts).toLocaleString('th-TH')} (${b.count} รายการ)?\n\nข้อมูลปัจจุบันจะถูกแทนที่`)) return;
+    items = b.data;
+    saveStorage();
+    renderAll();
+    document.getElementById('backupListPanel').style.display='none';
+    toast(`✅ กู้คืนสำเร็จ ${items.length} รายการ`);
+  } catch { toast('❌ กู้คืนไม่สำเร็จ'); }
 }
 
-
-// ===================== DATA MANAGERS (CSV, BACKUP, SAMPLE) =====================
-function exportCSV() {
-  if (!state.records.length) {
-    showToast('ไม่พบข้อมูลแปลงสำรวจในระบบสำหรับส่งออก', 'error');
-    return;
-  }
-  const header = ['ID','ชื่อผู้ส่ง','บ้านเลขที่','ซอย','เบอร์โทร','พิกัดดาวเทียม','ละติจูด','ลองจิจูด','สถานะสำรวจ','หมายเหตุ','วันที่นำเข้า','วันที่สำรวจเสร็จ','ผู้บันทึก','ละติจูด_GPSจริง','ลองจิจูด_GPSจริง','ระยะคลาดเคลื่อนขณะกด(ม.)'];
-  const statusLabel = { pending:'รอสำรวจ', processing:'กำลังสำรวจ', completed:'สำรวจแล้ว' };
-
-  const rows = state.records.map(r => [
-    r.id, r.name, r.address, r.soi, r.phone, r.map_url, r.lat||'', r.lng||'',
-    statusLabel[r.status]||r.status, (r.note||'').replace(/\n/g,' '), r.created_at,
-    r.surveyed_at||'', r.surveyor||'', r.gps_lat||'', r.gps_lng||'', r.distance_when_done||''
-  ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
-  
-  const csv = '\uFEFF' + [header.join(','), ...rows].join('\r\n');
-  downloadFile(csv, 'text/csv', 'lineexplore_survey_export.csv');
-  showToast('ส่งออกไฟล์คิวสำรวจ CSV สำเร็จ', 'success');
-}
-
-function backupJSON() {
-  if (!state.records.length) {
-    showToast('ไม่พบข้อมูลแปลงสำรวจในระบบสำหรับสำรอง', 'error');
-    return;
-  }
-  const json = JSON.stringify({ version: 2, exported_at: new Date().toISOString(), records: state.records }, null, 2);
-  downloadFile(json, 'application/json', 'lineexplore_backup.json');
-  showToast('สำรองข้อมูลสำรวจเป็น JSON เรียบร้อย', 'success');
-}
-
-function restoreJSON(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const data = JSON.parse(ev.target.result);
-      const recs = data.records || data;
-      if (!Array.isArray(recs)) throw new Error('invalid format');
-
-      if (!confirm(`ยืนยันนำเข้าข้อมูลสำรองจำนวน ${recs.length} แปลงสำรวจ? (ระบบจะล้างข้อมูลเดิมและนำเข้ารายการใหม่ทั้งหมด)`)) return;
-      
-      clearAllDBData().then(() => {
-        state.records = recs;
-        return saveRecordsBatchToDB(state.records);
-      }).then(() => {
-        updateSoiDropdown();
-        renderStats();
-        applyFilters();
-        updateMapMarkers();
-        showToast('กู้คืนพิกัดและข้อมูลสำรวจสำเร็จแล้ว', 'success');
-        switchTab('queue');
-      });
-    } catch {
-      showToast('ไฟล์สำรองข้อมูล JSON ผิดรูปแบบ โครงสร้างไม่ถูกต้อง', 'error');
-    }
-  };
-  reader.readAsText(file);
-  e.target.value = '';
-}
-
-function clearAllData() {
-  if (!confirm('⚠️ คำเตือน: ระบบจะลบข้อมูลคิวและภาพถ่ายทั้งหมดอย่างถาวร ไม่สามารถกู้คืนได้ ยืนยันดำเนินการต่อหรือไม่?')) return;
-  clearAllDBData().then(() => {
-    state.records = [];
-    state.filtered = [];
-    updateSoiDropdown();
-    renderStats();
-    applyFilters();
-    updateMapMarkers();
-    showToast('ล้างฐานข้อมูลระบบเรียบร้อยแล้ว', 'info');
-  });
-}
-
-function downloadFile(content, type, filename) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
-
-function generateSampleData() {
-  const startLat = state.userLat || 13.7563;
-  const startLng = state.userLng || 100.5018;
-
-  // Generate 5 dummy records near surveyor coordinates
-  const dummy = [
-    { id: 'd1', name: 'คุณมานพ สมศักดิ์', address: '123/1', soi: 'ซอยสุขุมวิท 1', phone: '0812345678', lat: startLat + 0.0001, lng: startLng + 0.0001, map_url: `https://www.google.com/maps/dir/?api=1&destination=${startLat + 0.0001},${startLng + 0.0001}`, status: 'pending', note: 'รอวัดแนวเขตพื้นที่ชั้นที่ 1', created_at: '05/06/2026 12:00' },
-    { id: 'd2', name: 'สมศรี มีความสุข', address: '99/5', soi: 'ซอยสุขุมวิท 1', phone: '0898765432', lat: startLat + 0.0003, lng: startLng - 0.0002, map_url: `https://www.google.com/maps/dir/?api=1&destination=${startLat + 0.0003},${startLng - 0.0002}`, status: 'pending', note: 'ตรวจสอบการใช้ประโยชน์ที่ดินเชิงเกษตรกรรม', created_at: '05/06/2026 12:15' },
-    { id: 'd3', name: 'นายวันชัย ดวงดี', address: '45/12', soi: 'ซอยสุขุมวิท 2', phone: '0855551234', lat: startLat - 0.0002, lng: startLng + 0.0003, map_url: `https://www.google.com/maps/dir/?api=1&destination=${startLat - 0.0002},${startLng + 0.0003}`, status: 'pending', note: 'อยู่บ้านรอให้ข้อมูลการรังวัดที่ดิน', created_at: '05/06/2026 12:20' },
-    { id: 'd4', name: 'วิชัย รักดี', address: '22', soi: 'ซอยสุขุมวิท 3', phone: '0821239876', lat: startLat + 0.0006, lng: startLng + 0.0005, map_url: `https://www.google.com/maps/dir/?api=1&destination=${startLat + 0.0006},${startLng + 0.0005}`, status: 'pending', note: 'นัดเช้า 9:00น. ตรวจสอบพื้นที่ทับซ้อนทางสาธารณะ', created_at: '05/06/2026 12:30' },
-    { id: 'd5', name: 'สุกัญญา รักชาติ', address: '555/9', soi: 'ซอยสุขุมวิท 3', phone: '0877778888', lat: startLat - 0.0004, lng: startLng - 0.0004, map_url: `https://www.google.com/maps/dir/?api=1&destination=${startLat - 0.0004},${startLng - 0.0004}`, status: 'pending', note: 'แปลงสุดท้ายประเมินภาษีสิ่งปลูกสร้าง', created_at: '05/06/2026 12:45' }
-  ];
-
-  // Merge sample data
-  const { added, merged } = mergeRecords(dummy);
-  saveRecordsBatchToDB(state.records).then(() => {
-    updateSoiDropdown();
-    renderStats();
-    applyFilters();
-    updateMapMarkers();
-    showToast(`สร้างจุดสำรวจทดลองสำเร็จ ${added} รายการใหม่เรียบร้อย`, 'success');
-    switchTab('queue');
-  });
-}
-
-function setStatusFilter(sf) {
-  state.statusFilter = sf;
-  document.querySelectorAll('#status-filters button').forEach(b => {
-    b.classList.toggle('bg-slate-200', b.dataset.sf === sf);
-    b.classList.toggle('dark:bg-slate-800', b.dataset.sf === sf);
-  });
-  applyFilters();
-}
-
-function markAllVisibleDone() {
-  if (!state.filtered.length) {
-    showToast('ไม่มีข้อมูลคิวที่กรองไว้', 'error');
-    return;
-  }
-  
-  if (!confirm(`เปลี่ยนสถานะรายการที่คัดกรองอยู่ทั้งหมด ${state.filtered.length} แปลง เป็น "สำรวจแล้ว" หรือไม่?`)) return;
-
-  state.filtered.forEach(f => {
-    if (f.status !== 'completed') {
-      f.status = 'completed';
-      f.surveyed_at = new Date().toLocaleString('th-TH');
-      f.surveyor = state.surveyorName;
-    }
-  });
-
-  saveRecordsBatchToDB(state.records).then(() => {
-    renderStats();
-    applyFilters();
-    updateMapMarkers();
-    showToast('เปลี่ยนสถานะคิวกรองทั้งหมดเสร็จสมบูรณ์', 'success');
-  });
-}
-
-// ===================== INIT SYSTEM =====================
-function init() {
-  // Load settings
-  document.getElementById('surveyor-name-input').value = state.surveyorName;
-  document.documentElement.classList.toggle('dark', state.darkMode);
-  updateDarkIcon();
-  updateOnlineBadge();
-
-  // Initialize DB and load
-  initDB()
-    .then(() => loadRecordsFromDB())
-    .then(() => {
-      // Set layouts
-      switchTab('queue');
-      updateSoiDropdown();
-      renderStats();
-      applyFilters();
-      
-      // Auto Request GPS on Page Load
-      setupGPS();
-      
-      // Auto Position Matcher & Survey Tracker
-      startAutoSurveyLoop();
-      
-      // Register Service Worker for offline operations
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js')
-          .then(() => console.log('Offline Service Worker Registered!'))
-          .catch(err => console.error('SW Registration Failed', err));
-      }
-    })
-    .catch((err) => {
-      console.error(err);
-      showToast('ระบบวิเคราะห์ฐานข้อมูลในเครื่องผิดพลาด', 'error');
-    });
-}
-
-document.addEventListener('DOMContentLoaded', init);
+// ===== BOOT =====
+init();
 </script>
 </body>
 </html>
