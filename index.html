@@ -1,537 +1,667 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>คิวสำรวจ — แผนที่ภาษีหมู่5 เทศบาลชากหมาก</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --green: #00c853; --green-glow: rgba(0,200,83,0.14);
-            --amber: #ffb300; --red: #ff4545; --blue: #4da3ff;
-            --bg: #0d1117; --surface: #161b22; --surface2: #1c2333;
-            --border: rgba(255,255,255,0.07);
-            --text: #e6edf3; --text-dim: #8b949e; --text-faint: #3d444d;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: var(--bg); color: var(--text); font-family: 'Sarabun', sans-serif; min-height: 100vh; }
-        body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px); pointer-events:none; z-index:9999; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ผ.ท.13 - บัญชีส่งข้อมูลการปรับปรุงข้อมูลแผนที่ภาษี</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>tailwind.config={theme:{extend:{colors:{pri:'#4f46e5',sec:'#7c3aed'}}}}</script>
+<style>
+*{font-family:'Sarabun',sans-serif;box-sizing:border-box}
 
-        .layout { display: grid; grid-template-columns: 230px 1fr; min-height: 100vh; }
+/* ===== Print (Landscape A4) ===== */
+@media print{
+  @page{size:A4 landscape;margin:10mm 10mm 14mm 10mm;@bottom-center{content:"หน้า " counter(page);font-size:9pt;font-family:'Sarabun',sans-serif}}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{background:#fff!important;font-size:10pt;line-height:1.3;margin:0;padding:0}
+  .no-print{display:none!important}
+  .container{max-width:100%!important;padding:0!important;margin:0!important}
+  .hidden.print\:block{display:block!important;text-align:center!important;margin:0 auto 8pt auto!important;width:100%!important}
+  .hidden.print\:block h1,.hidden.print\:block h2,.hidden.print\:block p{text-align:center!important;margin-left:auto!important;margin-right:auto!important;width:100%!important}
+  .hidden.print\:block h1{font-size:15pt;font-weight:700;margin-bottom:3pt}
+  .hidden.print\:block h2{font-size:12pt;font-weight:600;margin-bottom:5pt}
+  .hidden.print\:block p{font-size:10pt;margin-bottom:3pt}
+  .overflow-x-auto{overflow:visible!important}
+  table{width:100%;border-collapse:collapse;page-break-inside:auto;font-size:9pt;table-layout:fixed}
+  thead{display:table-header-group}
+  thead th{background:#f3f4f6!important;border:.75pt solid #000;padding:3pt 2pt;font-weight:600;vertical-align:middle;text-align:center;font-size:8.5pt;word-wrap:break-word;overflow-wrap:break-word}
+  tbody tr{page-break-inside:avoid}
+  tbody td{border:.5pt solid #333;padding:2pt 2pt;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word}
+  .min-w-\[100px\],.min-w-\[150px\],.min-w-\[180px\],.min-w-\[120px\]{min-width:auto!important}
+  tbody td input,tbody td textarea{border:none!important;background:transparent!important;box-shadow:none!important;padding:0!important;margin:0!important;font-size:9pt;font-family:'Sarabun',sans-serif;width:100%;color:#000;resize:none;outline:none;overflow:hidden;height:auto!important}
+  .rounded-xl,.rounded-2xl,.rounded-lg{border-radius:0!important}
+  .table-shadow,.shadow-xl,.shadow-lg,.shadow-md{box-shadow:none!important}
+  .bg-white{background:#fff!important}
+  .print-signatures{margin-top:12pt;page-break-inside:avoid;break-inside:avoid}
+  .print-signatures p{margin:0 0 4pt 0!important;font-size:10pt}
+  .print-signatures .flex>div{width:48%!important}
+  body>div:last-child{page-break-after:avoid}
+  body::after{content:none!important}
+  div:empty,.bg-white:last-child:empty{display:none!important}
+}
 
-        /* SIDEBAR */
-        .sidebar { background:var(--surface); border-right:1px solid var(--border); padding:24px 0; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto; }
-        .logo { padding:0 20px 20px; border-bottom:1px solid var(--border); }
-        .logo-mark { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
-        .logo-icon { width:34px; height:34px; background:var(--green); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; color:#000; font-weight:700; box-shadow:0 0 16px var(--green-glow); }
-        .logo-name { font-size:14px; font-weight:700; }
-        .logo-sub { font-size:11px; color:var(--text-dim); font-family:'IBM Plex Mono',monospace; }
-        .nav { padding:16px 10px; flex:1; }
-        .nav-label { font-size:10px; font-family:'IBM Plex Mono',monospace; color:var(--text-faint); letter-spacing:1.5px; text-transform:uppercase; padding:0 10px; margin-bottom:6px; margin-top:12px; }
-        .nav-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:7px; cursor:pointer; color:var(--text-dim); font-size:13px; transition:all 0.15s; margin-bottom:2px; }
-        .nav-item:hover { background:var(--surface2); color:var(--text); }
-        .nav-item.active { background:var(--green-glow); color:var(--green); font-weight:600; }
-        .nav-item i { width:14px; text-align:center; font-size:12px; }
-        .stats-box { margin:0 12px 12px; padding:14px; background:var(--surface2); border-radius:8px; border:1px solid var(--border); }
-        .stat-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; font-size:12px; color:var(--text-dim); }
-        .stat-row:not(:last-child) { border-bottom:1px solid var(--border); }
-        .stat-val { font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:500; }
-        .v-total{color:var(--text);} .v-pending{color:var(--amber);} .v-done{color:var(--green);}
+/* ===== Layout ===== */
+.gradient-bg{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 30%,#4f46e5 60%,#7c3aed 100%)}
+.table-shadow{box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.06)}
+.animate-fade-in{animation:fadeIn .5s cubic-bezier(.22,1,.36,1)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+table th{background:linear-gradient(180deg,#f8fafc 0%,#e2e8f0 100%);font-weight:600}
+.sticky-header{position:sticky;top:0;z-index:10}
 
-        /* MAIN */
-        .main { display:flex; flex-direction:column; }
-        .topbar { padding:14px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; background:var(--surface); position:sticky; top:0; z-index:100; flex-wrap:wrap; }
-        .topbar-title { font-size:13px; font-weight:700; color:var(--text-dim); font-family:'IBM Plex Mono',monospace; white-space:nowrap; }
-        .search-wrap { flex:1; min-width:160px; position:relative; }
-        .search-wrap i { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-faint); font-size:12px; }
-        .search-input { width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px 12px 8px 32px; border-radius:7px; font-size:13px; font-family:'Sarabun',sans-serif; outline:none; transition:border 0.15s; }
-        .search-input:focus { border-color:var(--green); }
-        .search-input::placeholder { color:var(--text-faint); }
-        .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 13px; border-radius:7px; font-size:13px; font-family:'Sarabun',sans-serif; font-weight:600; cursor:pointer; border:none; transition:all 0.15s; white-space:nowrap; }
-        .btn-ghost { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
-        .btn-ghost:hover { background:var(--border); }
-        .btn-green { background:var(--green); color:#000; box-shadow:0 0 16px var(--green-glow); }
-        .btn-green:hover { background:#00e676; }
+/* ===== Toolbar buttons ===== */
+.tb{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:500;white-space:nowrap;border:none;cursor:pointer;transition:all .2s cubic-bezier(.22,1,.36,1);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.tb:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.tb:active{transform:translateY(0);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.tb svg{width:16px;height:16px;flex-shrink:0}
+.tb-pri{background:linear-gradient(135deg,#4f46e5,#7c3aed)}
+.tb-grn{background:linear-gradient(135deg,#16a34a,#22c55e)}.tb-grn:hover{background:linear-gradient(135deg,#15803d,#16a34a)}
+.tb-blu{background:linear-gradient(135deg,#2563eb,#3b82f6)}.tb-blu:hover{background:linear-gradient(135deg,#1d4ed8,#2563eb)}
+.tb-pur{background:linear-gradient(135deg,#7c3aed,#a855f7)}.tb-pur:hover{background:linear-gradient(135deg,#6d28d9,#7c3aed)}
+.tb-yel{background:linear-gradient(135deg,#d97706,#f59e0b)}.tb-yel:hover{background:linear-gradient(135deg,#b45309,#d97706)}
+.tb-gry{background:linear-gradient(135deg,#475569,#64748b)}.tb-gry:hover{background:linear-gradient(135deg,#334155,#475569)}
+.tb-tel{background:linear-gradient(135deg,#0d9488,#14b8a6)}.tb-tel:hover{background:linear-gradient(135deg,#0f766e,#0d9488)}
+.tb-sky{background:linear-gradient(135deg,#0284c7,#0ea5e9)}.tb-sky:hover{background:linear-gradient(135deg,#0369a1,#0284c7)}
+.tb-ind{background:linear-gradient(135deg,#4f46e5,#6366f1)}.tb-ind:hover{background:linear-gradient(135deg,#4338ca,#4f46e5)}
+.tb-red{background:linear-gradient(135deg,#dc2626,#ef4444)}.tb-red:hover{background:linear-gradient(135deg,#b91c1c,#dc2626)}
+.tb-ros{background:linear-gradient(135deg,#e11d48,#f43f5e)}.tb-ros:hover{background:linear-gradient(135deg,#be123c,#e11d48)}
 
-        /* CONTENT */
-        .content { padding:20px 24px; flex:1; }
+/* ===== Toolbar group ===== */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;padding:14px 0}
+.toolbar .sep{width:1px;height:24px;background:linear-gradient(180deg,transparent,#d1d5db,transparent);margin:0 6px}
 
-        /* ── IMPORT ZONE ── */
-        .import-section { margin-bottom:20px; }
-        .import-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-        .import-header-left { display:flex; align-items:center; gap:8px; }
-        .import-header-left span { font-size:13px; font-weight:600; color:var(--text-dim); }
-        .import-toggle { font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--text-faint); cursor:pointer; border:1px solid var(--border); padding:4px 10px; border-radius:20px; background:none; transition:all 0.15s; }
-        .import-toggle:hover { color:var(--text); border-color:var(--text-dim); }
+/* ===== Dataset cards ===== */
+.ds-panel{background:linear-gradient(135deg,#f0f9ff 0%,#ede9fe 50%,#faf5ff 100%);border:1px solid #c7d2fe;border-radius:14px;padding:18px;margin-top:18px;backdrop-filter:blur(8px)}
+.ds-card{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:#fff;border:1px solid #e2e8f0;cursor:pointer;transition:all .2s cubic-bezier(.22,1,.36,1);font-size:13px}
+.ds-card:hover{border-color:#6366f1;background:#eef2ff;transform:translateX(4px)}
+.ds-card.active{border-color:#4f46e5;background:#eef2ff;box-shadow:0 0 0 2px rgba(79,70,229,.2)}
+.ds-card .dot{width:8px;height:8px;border-radius:50%;background:#4f46e5;flex-shrink:0}
+.ds-card .info{flex:1;overflow:hidden}
+.ds-card .info span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ds-card .del{color:#94a3b8;padding:4px;border-radius:6px;transition:all .15s;flex-shrink:0}
+.ds-card .del:hover{color:#ef4444;background:#fef2f2}
 
-        .drop-zone { border:2px dashed var(--border); border-radius:12px; padding:28px; text-align:center; cursor:pointer; transition:all 0.2s; background:var(--surface); position:relative; overflow:hidden; display:none; }
-        .drop-zone.open { display:block; }
-        .drop-zone::after { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at center,var(--green-glow) 0%,transparent 70%); opacity:0; transition:opacity 0.3s; pointer-events:none; }
-        .drop-zone:hover, .drop-zone.dragover { border-color:var(--green); }
-        .drop-zone:hover::after, .drop-zone.dragover::after { opacity:1; }
-        .drop-icon { width:48px; height:48px; background:var(--surface2); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--green); margin:0 auto 12px; border:1px solid var(--border); position:relative; z-index:1; }
-        .drop-title { font-size:14px; font-weight:600; margin-bottom:4px; position:relative; z-index:1; }
-        .drop-sub { font-size:12px; color:var(--text-dim); position:relative; z-index:1; }
-        .drop-hint { display:inline-flex; align-items:center; gap:6px; margin-top:12px; background:var(--surface2); border:1px solid var(--border); padding:5px 12px; border-radius:20px; font-size:11px; color:var(--text-dim); font-family:'IBM Plex Mono',monospace; position:relative; z-index:1; }
+/* ===== Toast ===== */
+.toast{position:fixed;top:20px;right:20px;padding:14px 22px;border-radius:12px;color:#fff;font-weight:500;font-size:14px;box-shadow:0 8px 30px rgba(0,0,0,.2);z-index:9999;animation:toastIn .35s cubic-bezier(.22,1,.36,1);backdrop-filter:blur(8px)}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px) scale(.95)}to{opacity:1;transform:translateX(0) scale(1)}}
 
-        /* parse progress */
-        .parse-progress { display:none; align-items:center; gap:10px; padding:12px 16px; background:var(--surface); border:1px solid var(--border); border-radius:8px; font-size:13px; color:var(--text-dim); }
-        .parse-progress.show { display:flex; }
-        .spinner { width:16px; height:16px; border:2px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
-        @keyframes spin { to { transform:rotate(360deg); } }
+/* ===== Hide overlays ===== */
+div[class*="send"],div[class*="Send"],div[class*="console"],div[class*="Console"],button[class*="send"],button[class*="Send"]{display:none!important}
 
-        /* status banner */
-        .status-bar { display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-bottom:16px; }
-        .status-bar i { font-size:16px; color:var(--green); }
-        .status-bar-text { flex:1; font-size:12px; color:var(--text-dim); }
-        .status-bar-text strong { color:var(--text); }
+/* ===== Landscape-optimized screen layout ===== */
+@media (min-width:1024px){
+  .container{max-width:1400px}
+  #dataTable{table-layout:fixed}
+  #dataTable th,#dataTable td{padding:6px 8px}
+}
 
-        /* chips */
-        .chip-row { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
-        .chip { padding:5px 12px; border-radius:20px; font-size:11px; font-family:'IBM Plex Mono',monospace; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text-dim); transition:all 0.15s; }
-        .chip:hover { border-color:var(--text-dim); color:var(--text); }
-        .chip.active { background:var(--green-glow); border-color:var(--green); color:var(--green); }
-
-        /* TABLE */
-        .table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
-        .table-head-bar { padding:11px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
-        .table-label { font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--text-dim); letter-spacing:0.5px; }
-        table { width:100%; border-collapse:collapse; }
-        thead th { padding:9px 14px; font-size:10px; font-family:'IBM Plex Mono',monospace; color:var(--text-faint); text-transform:uppercase; letter-spacing:1px; text-align:left; background:var(--surface2); border-bottom:1px solid var(--border); white-space:nowrap; }
-        tbody tr { border-bottom:1px solid var(--border); transition:background 0.1s; }
-        tbody tr:last-child { border-bottom:none; }
-        tbody tr:hover { background:rgba(255,255,255,0.02); }
-        td { padding:11px 14px; font-size:13px; vertical-align:middle; }
-        .td-num { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-faint); }
-        .td-time { font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); white-space:nowrap; }
-        .td-sender { font-weight:600; color:var(--text); max-width:130px; }
-        .td-detail { color:var(--text-dim); font-size:12px; max-width:230px; }
-        .td-coord { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text-faint); white-space:nowrap; }
-        .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:10px; font-family:'IBM Plex Mono',monospace; font-weight:600; white-space:nowrap; }
-        .badge::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; }
-        .badge-pending { background:rgba(255,179,0,0.1); color:var(--amber); border:1px solid rgba(255,179,0,0.2); }
-        .badge-done { background:rgba(0,200,83,0.1); color:var(--green); border:1px solid rgba(0,200,83,0.2); }
-        .btn-map { display:inline-flex; align-items:center; gap:5px; background:rgba(77,163,255,0.1); color:var(--blue); border:1px solid rgba(77,163,255,0.2); padding:5px 10px; border-radius:5px; text-decoration:none; font-size:11px; font-family:'IBM Plex Mono',monospace; transition:all 0.15s; white-space:nowrap; }
-        .btn-map:hover { background:rgba(77,163,255,0.2); transform:translateY(-1px); }
-        .action-group { display:flex; gap:4px; }
-        .icon-btn { width:27px; height:27px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); border-radius:5px; background:none; cursor:pointer; font-size:11px; transition:all 0.15s; }
-        .icon-btn-check{color:var(--green);} .icon-btn-check:hover{background:rgba(0,200,83,0.1);border-color:var(--green);}
-        .icon-btn-undo{color:var(--text-dim);} .icon-btn-undo:hover{background:var(--surface2);}
-        .icon-btn-del{color:var(--red);} .icon-btn-del:hover{background:rgba(255,69,69,0.1);border-color:var(--red);}
-        .empty { text-align:center; padding:50px; color:var(--text-faint); font-size:13px; }
-        .empty i { font-size:28px; margin-bottom:10px; display:block; }
-
-        /* TOAST */
-        .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:10px 18px; border-radius:8px; font-size:12px; font-family:'IBM Plex Mono',monospace; box-shadow:0 8px 32px rgba(0,0,0,0.4); transition:transform 0.3s; z-index:9998; white-space:nowrap; }
-        .toast.show { transform:translateX(-50%) translateY(0); }
-        .toast.success { border-color:var(--green); color:var(--green); }
-        .toast.error { border-color:var(--red); color:var(--red); }
-        .toast.warn { border-color:var(--amber); color:var(--amber); }
-
-        @media(max-width:800px){ .layout{grid-template-columns:1fr;} .sidebar{display:none;} .topbar,.content{padding:12px;} }
-    </style>
+/* ===== Flexible cell inputs & textarea ===== */
+#dataTable tbody td{height:auto;vertical-align:middle}
+#dataTable tbody td input,
+#dataTable tbody td textarea{
+  display:block;
+  width:100%;
+  min-height:32px;
+  height:auto;
+  padding:4px 6px;
+  line-height:1.5;
+  overflow:hidden;
+  resize:none;
+  box-sizing:border-box;
+  word-break:break-word;
+  white-space:pre-wrap;
+}
+#dataTable tbody td textarea{
+  overflow:hidden;
+  min-height:36px;
+}
+</style>
 </head>
-<body>
-<div class="layout">
+<body class="bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-50 min-h-screen">
+<div class="container mx-auto p-4 lg:px-10 lg:py-6 max-w-[1500px]">
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-        <div class="logo">
-            <div class="logo-mark">
-                <div class="logo-icon"><i class="fab fa-line"></i></div>
-                <div>
-                    <div class="logo-name">Survey Queue</div>
-                    <div class="logo-sub">เทศบาลชากหมาก</div>
-                </div>
+    <!-- Header -->
+    <div class="gradient-bg rounded-2xl p-6 lg:p-8 mb-6 text-white shadow-xl no-print animate-fade-in text-center relative overflow-hidden">
+        <div class="absolute inset-0 opacity-[0.07]" style="background:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><circle cx=%2220%22 cy=%2220%22 r=%221.5%22 fill=%22white%22/></svg>')"></div>
+        <div class="absolute -top-24 -right-24 w-64 h-64 bg-white/5 rounded-full blur-2xl"></div>
+        <div class="absolute -bottom-20 -left-20 w-48 h-48 bg-purple-400/10 rounded-full blur-2xl"></div>
+        <h1 class="text-2xl lg:text-4xl font-bold mb-2 relative tracking-tight">แบบ ผ.ท.13</h1>
+        <p class="text-base lg:text-lg opacity-90 relative font-light">บัญชีส่งข้อมูลการปรับปรุงข้อมูลแผนที่ภาษีและทะเบียนทรัพย์สิน</p>
+        <div class="mt-3 inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-1.5 text-xs opacity-70 tracking-wider font-light relative backdrop-blur-sm">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+            พัฒนาโดย เบิร์ดลูกแม่ค้า
+        </div>
+    </div>
+
+    <!-- Form Controls -->
+    <div class="bg-white rounded-xl p-5 lg:p-6 mb-6 table-shadow no-print animate-fade-in border border-gray-100">
+        <h2 class="text-base font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            ข้อมูลส่วนหัว
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">ประเภทหน่วยงาน</label>
+                <select id="orgType" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg transition bg-gray-50 hover:border-gray-300">
+                    <option value="เทศบาล">เทศบาล</option>
+                    <option value="อบต.">องค์การบริหารส่วนตำบล (อบต.)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">ชื่อหน่วยงาน</label>
+                <input type="text" id="orgName" placeholder="เช่น เทศบาลเมืองลำปาง" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg transition bg-gray-50 hover:border-gray-300">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">จังหวัด</label>
+                <input type="text" id="province" list="provinceList" placeholder="เลือกจังหวัด" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg transition bg-gray-50 hover:border-gray-300">
+                <datalist id="provinceList">
+                    <option value="กรุงเทพมหานคร"><option value="กระบี่"><option value="กาญจนบุรี"><option value="กาฬสินธุ์">
+                    <option value="กำแพงเพชร"><option value="ขอนแก่น"><option value="จันทบุรี"><option value="ฉะเชิงเทรา">
+                    <option value="ชลบุรี"><option value="ชัยนาท"><option value="ชัยภูมิ"><option value="ชุมพร">
+                    <option value="เชียงราย"><option value="เชียงใหม่"><option value="ตรัง"><option value="ตราด">
+                    <option value="ตาก"><option value="นครนายก"><option value="นครปฐม"><option value="นครพนม">
+                    <option value="นครราชสีมา"><option value="นครศรีธรรมราช"><option value="นครสวรรค์"><option value="นนทบุรี">
+                    <option value="นราธิวาส"><option value="น่าน"><option value="บึงกาฬ"><option value="บุรีรัมย์">
+                    <option value="ปทุมธานี"><option value="ประจวบคีรีขันธ์"><option value="ปราจีนบุรี"><option value="ปัตตานี">
+                    <option value="พระนครศรีอยุธยา"><option value="พังงา"><option value="พัทลุง"><option value="พิจิตร">
+                    <option value="พิษณุโลก"><option value="เพชรบุรี"><option value="เพชรบูรณ์"><option value="แพร่">
+                    <option value="พะเยา"><option value="ภูเก็ต"><option value="มหาสารคาม"><option value="มุกดาหาร">
+                    <option value="แม่ฮ่องสอน"><option value="ยโสธร"><option value="ยะลา"><option value="ร้อยเอ็ด">
+                    <option value="ระนอง"><option value="ระยอง"><option value="ราชบุรี"><option value="ลพบุรี">
+                    <option value="ลำปาง"><option value="ลำพูน"><option value="เลย"><option value="ศรีสะเกษ">
+                    <option value="สกลนคร"><option value="สงขลา"><option value="สตูล"><option value="สมุทรปราการ">
+                    <option value="สมุทรสงคราม"><option value="สมุทรสาคร"><option value="สระแก้ว"><option value="สระบุรี">
+                    <option value="สิงห์บุรี"><option value="สุโขทัย"><option value="สุพรรณบุรี"><option value="สุราษฎร์ธานี">
+                    <option value="สุรินทร์"><option value="หนองคาย"><option value="หนองบัวลำภู"><option value="อ่างทอง">
+                    <option value="อุดรธานี"><option value="อุทัยธานี"><option value="อุตรดิตถ์"><option value="อุบลราชธานี">
+                    <option value="อำนาจเจริญ">
+                </datalist>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">ประจำเดือน</label>
+                <input type="month" id="reportMonth" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg transition bg-gray-50 hover:border-gray-300">
+            </div>
+
+        </div>
+
+        <!-- Dataset Panel -->
+        <div class="ds-panel" id="dsPanel">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-semibold text-indigo-700 flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+                    ชุดข้อมูลที่บันทึกไว้ (<span id="dsCount">0</span>)
+                </h3>
+            </div>
+            <div id="dsList" class="grid gap-2 max-h-40 overflow-y-auto pr-1">
+                <p class="text-xs text-gray-400 text-center py-3">ยังไม่มีชุดข้อมูล — กดบันทึกเพื่อสร้างชุดแรก</p>
             </div>
         </div>
-        <nav class="nav">
-            <div class="nav-label">กรองสถานะ</div>
-            <div class="nav-item active" id="nav-all" onclick="setFilter('all')"><i class="fas fa-layer-group"></i> ทั้งหมด</div>
-            <div class="nav-item" id="nav-pending" onclick="setFilter('pending')"><i class="fas fa-clock"></i> รอดำเนินการ</div>
-            <div class="nav-item" id="nav-done" onclick="setFilter('done')"><i class="fas fa-circle-check"></i> สำรวจแล้ว</div>
-            <div class="nav-label">เครื่องมือ</div>
-            <div class="nav-item" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</div>
-            <div class="nav-item" onclick="clearDone()"><i class="fas fa-broom"></i> ล้างที่สำรวจแล้ว</div>
-            <div class="nav-item" onclick="resetToPreloaded()"><i class="fas fa-rotate-left"></i> รีเซ็ตข้อมูล</div>
-        </nav>
-        <div class="stats-box">
-            <div class="nav-label" style="padding:0;margin:0 0 8px">สถิติคิว</div>
-            <div class="stat-row"><span>ทั้งหมด</span><span class="stat-val v-total" id="s-total">0</span></div>
-            <div class="stat-row"><span>รอดำเนินการ</span><span class="stat-val v-pending" id="s-pending">0</span></div>
-            <div class="stat-row"><span>สำรวจแล้ว</span><span class="stat-val v-done" id="s-done">0</span></div>
+
+        <!-- Toolbar -->
+        <div class="toolbar mt-4">
+            <button onclick="generateTable()" class="tb tb-pri" title="สร้างตาราง">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                สร้างตาราง
+            </button>
+            <button onclick="addRow()" class="tb tb-grn" title="เพิ่มแถว">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6"/></svg>
+                เพิ่มแถว
+            </button>
+            <div class="sep"></div>
+            <button onclick="importCSV()" class="tb tb-blu" title="นำเข้า CSV">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                นำเข้า CSV
+            </button>
+            <input type="file" id="csvFile" accept=".csv" class="hidden" onchange="handleCSVFile(event)">
+            <div class="sep"></div>
+            <button onclick="saveData()" class="tb tb-yel" title="บันทึกข้อมูล">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                บันทึก
+            </button>
+            <button onclick="exportCSV()" class="tb tb-pur" title="ส่งออก CSV">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                ส่งออก CSV
+            </button>
+            <button onclick="exportXLSX()" class="tb tb-tel" title="ส่งออก Excel">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                ส่งออก Excel
+            </button>
+
+            <div class="sep"></div>
+            <button onclick="window.print()" class="tb tb-gry" title="พิมพ์">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                พิมพ์
+            </button>
+            <button onclick="clearData()" class="tb tb-red" title="ล้างข้อมูลทั้งหมด">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                ล้างข้อมูล
+            </button>
         </div>
-    </aside>
+    </div>
 
-    <!-- MAIN -->
-    <main class="main">
-        <div class="topbar">
-            <div class="topbar-title">แผนที่ภาษีหมู่ 5</div>
-            <div class="search-wrap">
-                <i class="fas fa-search"></i>
-                <input id="search" class="search-input" placeholder="ค้นหาชื่อ, บ้านเลขที่, เวลา...">
-            </div>
-            <button class="btn btn-green" onclick="toggleImport()"><i class="fas fa-file-import"></i> นำเข้าไฟล์ใหม่</button>
+    <!-- Print Header -->
+    <div class="hidden print:block mb-4 text-center">
+        <h1 class="text-2xl font-bold mb-1">แบบ ผ.ท.13</h1>
+        <h2 class="text-lg font-semibold mb-2">บัญชีส่งข้อมูลการปรับปรุงข้อมูลแผนที่ภาษีและทะเบียนทรัพย์สิน</h2>
+        <p class="text-sm">
+            <span id="printOrgType">เทศบาล</span><span id="printOrgName"></span> 
+            <span id="printProvince"></span> 
+            ประจำเดือน <span id="printMonth"></span>
+        </p>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-xl table-shadow overflow-hidden animate-fade-in border border-gray-100">
+        <div class="overflow-x-auto">
+            <table id="dataTable" class="w-full text-sm" style="table-layout:auto">
+                <thead class="sticky-header">
+                    <tr>
+                        <th rowspan="2" class="border border-gray-300 px-2 py-3 w-12">ลำดับ</th>
+                        <th rowspan="2" class="border border-gray-300 px-2 py-3 min-w-[100px]">รหัสประจำ<br>แปลงที่ดิน</th>
+                        <th rowspan="2" class="border border-gray-300 px-2 py-3 min-w-[150px]">เจ้าของทรัพย์สิน</th>
+                        <th rowspan="2" class="border border-gray-300 px-2 py-3 min-w-[180px]">รายการปรับปรุง<br>รายการแก้ไข</th>
+                        <th colspan="5" class="border border-gray-300 px-2 py-2">ปรับปรุงเพิ่ม/ลด จำนวนราย</th>
+                        <th rowspan="2" class="border border-gray-300 px-2 py-3 min-w-[120px]">หมายเหตุ</th>
+                        <th rowspan="2" class="border border-gray-300 px-2 py-3 min-w-[120px]">ลงชื่อ<br>ผู้รับข้อมูล</th>
+                        <th rowspan="2" class="border border-gray-300 px-2 py-3 min-w-[100px]">วัน เดือน ปี<br>ที่ปรับข้อมูล</th>
+                        <th rowspan="2" class="border border-gray-300 px-2 py-3 w-12 no-print">ลบ</th>
+                    </tr>
+                    <tr>
+                        <th class="border border-gray-300 px-2 py-2 w-16">ที่ดิน</th>
+                        <th class="border border-gray-300 px-2 py-2 w-16">โรงเรือน</th>
+                        <th class="border border-gray-300 px-2 py-2 w-16">การค้า</th>
+                        <th class="border border-gray-300 px-2 py-2 w-16">ป้าย</th>
+                        <th class="border border-gray-300 px-2 py-2 w-20">ผู้ชำระภาษี</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
         </div>
+    </div>
 
-        <div class="content">
+    <!-- Row count footer -->
+    <div class="no-print text-center text-xs text-gray-400 mt-2" id="rowCountFooter">0 รายการ</div>
 
-            <!-- IMPORT SECTION -->
-            <div class="import-section">
-                <div id="drop-zone" class="drop-zone">
-                    <div class="drop-icon"><i class="fab fa-line"></i></div>
-                    <div class="drop-title">ลากไฟล์แชท LINE (.txt) มาวาง</div>
-                    <div class="drop-sub">พิกัดใหม่จะถูกรวมเข้ากับคิวที่มีอยู่ โดยไม่ลบข้อมูลเดิม</div>
-                    <div class="drop-hint"><i class="fas fa-info-circle"></i> หรือคลิกที่นี่เพื่อเลือกไฟล์จากเครื่อง</div>
-                    <input type="file" id="file-input" accept=".txt" style="display:none">
-                </div>
-                <div class="parse-progress" id="parse-progress">
-                    <div class="spinner"></div>
-                    <span id="parse-msg">กำลังประมวลผลไฟล์...</span>
-                </div>
-            </div>
 
-            <!-- STATUS BAR -->
-            <div class="status-bar" id="status-bar">
-                <i class="fas fa-circle-check"></i>
-                <div class="status-bar-text" id="status-text">
-                    โหลดข้อมูลจาก cache — <strong>0 พิกัด</strong> จากแชทกลุ่ม <strong>เเผนที่ภาษีหมู่5เทศบาลชากหมาก</strong>
-                </div>
-            </div>
-
-            <!-- FILTER CHIPS -->
-            <div class="chip-row">
-                <div class="chip active" id="chip-all" onclick="setChip('all')">ทั้งหมด</div>
-                <div class="chip" id="chip-pending" onclick="setChip('pending')">⏳ รอดำเนินการ</div>
-                <div class="chip" id="chip-done" onclick="setChip('done')">✅ สำรวจแล้ว</div>
-            </div>
-
-            <!-- TABLE -->
-            <div class="table-wrap">
-                <div class="table-head-bar">
-                    <div class="table-label">SURVEY_QUEUE — หมู่ 5 ต.สำนักท้อน อ.บ้านฉาง จ.ระยอง</div>
-                    <div style="font-size:12px;color:var(--text-dim)" id="row-count">0 รายการ</div>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>เวลา</th>
-                            <th>ผู้ส่ง</th>
-                            <th>รายละเอียด</th>
-                            <th>พิกัด</th>
-                            <th>แผนที่</th>
-                            <th>สถานะ</th>
-                            <th>จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rows"></tbody>
-                </table>
-            </div>
-        </div>
-    </main>
 </div>
-<div class="toast" id="toast"></div>
 
 <script>
-// ══════════════════════════════════════════
-//  PRELOADED DATA (ข้อมูลจากไฟล์แชทวันที่ 30 พ.ค. 2569)
-// ══════════════════════════════════════════
-const PRELOADED = [{"id": "r1", "time": "09:40", "sender": "โรจน์ คนของประชาชน", "detail": "สาโรจน์​ เจริญ​ | 72/103ม5สำนักท้อนครับ", "url": "https://maps.google.com/maps?q=12.757738,101.050196", "lat": 12.757738, "lng": 101.050196, "status": "pending"}, {"id": "r7", "time": "09:50", "sender": "เรียม กองพาลี", "detail": "", "url": "https://maps.google.com/maps?q=12.751987,101.050632", "lat": 12.751987, "lng": 101.050632, "status": "pending"}, {"id": "r10", "time": "09:59", "sender": "อิสรชล คนปอน ๆ", "detail": "", "url": "https://maps.google.com/maps?q=12.752967,101.049655", "lat": 12.752967, "lng": 101.049655, "status": "pending"}, {"id": "r14", "time": "10:09", "sender": "☘️Chitan Manta MTiu🌲", "detail": "", "url": "https://maps.google.com/maps?q=12.757352,101.048124", "lat": 12.757352, "lng": 101.048124, "status": "pending"}, {"id": "r15", "time": "10:10", "sender": "วิชัย", "detail": "", "url": "https://maps.google.com/maps?q=12.757659,101.048205", "lat": 12.757659, "lng": 101.048205, "status": "pending"}, {"id": "r16", "time": "10:10", "sender": "ศิริ", "detail": "", "url": "https://maps.google.com/maps?q=12.752978,101.048479", "lat": 12.752978, "lng": 101.048479, "status": "pending"}, {"id": "r32", "time": "10:25", "sender": "Thip Thaenthai", "detail": "", "url": "https://maps.google.com/maps?q=12.75823454373773,101.0551595595675", "lat": 12.75823454373773, "lng": 101.0551595595675, "status": "pending"}, {"id": "r37", "time": "10:42", "sender": "tay", "detail": "", "url": "https://maps.google.com/maps?q=12.754211,101.053735", "lat": 12.754211, "lng": 101.053735, "status": "pending"}, {"id": "r38", "time": "10:43", "sender": "กมลนิตย์ ริมดุสิต", "detail": "199/1 บ้านสายป่าน", "url": "https://maps.google.com/maps?q=12.751968,101.048647", "lat": 12.751968, "lng": 101.048647, "status": "pending"}, {"id": "r41", "time": "10:52", "sender": "Somnuk Jeenmuang", "detail": "199/1 บ้านสายป่าน", "url": "https://maps.google.com/maps?q=12.752160,101.049064", "lat": 12.75216, "lng": 101.049064, "status": "pending"}, {"id": "r42", "time": "10:53", "sender": "Somnuk Jeenmuang", "detail": "", "url": "https://maps.google.com/maps?q=12.749993,101.047103", "lat": 12.749993, "lng": 101.047103, "status": "pending"}, {"id": "r44", "time": "10:54", "sender": "KruYupin Boonprasert", "detail": "199/1 บ้านสายป่าน", "url": "https://maps.google.com/maps?q=12.752532,101.049002", "lat": 12.752532, "lng": 101.049002, "status": "pending"}, {"id": "r46", "time": "10:56", "sender": "noi happy life", "detail": "97 | P2WX+JM ตำบลบ้านฉาง อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย | 97 ฉวีวรรณ มากเมฆ บ้านเลขที่200/50ม.5 ต.สำนักท้อน อ.บ้านฉาง จ.ระยอง21130", "url": "https://maps.google.com/maps?q=12.746184,101.050072", "lat": 12.746184, "lng": 101.050072, "status": "pending"}, {"id": "r52", "time": "11:19", "sender": "yao", "detail": "P2WX+JM ตำบลบ้านฉาง อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย | 200/70 ม.5 นงค์เยาว์", "url": "https://maps.google.com/maps?q=12.745044,101.049227", "lat": 12.745044, "lng": 101.049227, "status": "pending"}, {"id": "r59", "time": "11:56", "sender": "สุมาลี", "detail": "", "url": "https://maps.google.com/maps?q=12.752320,101.049011", "lat": 12.75232, "lng": 101.049011, "status": "pending"}, {"id": "r61", "time": "12:02", "sender": "ขวัญเรือน หอมหวล", "detail": "", "url": "https://maps.google.com/maps?q=12.750643,101.046481", "lat": 12.750643, "lng": 101.046481, "status": "pending"}, {"id": "r66", "time": "12:10", "sender": "พี่เทรน...", "detail": "", "url": "https://maps.google.com/maps?q=12.753190,101.048316", "lat": 12.75319, "lng": 101.048316, "status": "pending"}, {"id": "r68", "time": "12:11", "sender": "JoY", "detail": ")", "url": "https://maps.google.com/maps?q=12.751123001810862,101.04710329333417", "lat": 12.751123001810862, "lng": 101.04710329333417, "status": "pending"}, {"id": "r70", "time": "12:44", "sender": "ศิริ", "detail": "305 ตำบล สำนักท้อน อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.755437,101.050873", "lat": 12.755437, "lng": 101.050873, "status": "pending"}, {"id": "r72", "time": "12:51", "sender": "อาภรณ์", "detail": "165 ซอย เทศบาล 2 ตำบลบ้านฉาง อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.742752,101.050112", "lat": 12.742752, "lng": 101.050112, "status": "pending"}, {"id": "r75", "time": "13:01", "sender": "สุปราณี", "detail": "เทศบาล 1/2 ตำบลบ้านฉาง อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.757699,101.042643", "lat": 12.757699, "lng": 101.042643, "status": "pending"}, {"id": "r81", "time": "13:33", "sender": "โอเล่", "detail": "", "url": "https://maps.google.com/maps?q=12.752171,101.049466", "lat": 12.752171, "lng": 101.049466, "status": "pending"}, {"id": "r83", "time": "13:37", "sender": "Akasit Ch", "detail": "34 ตำบลบ้านฉาง อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.733869,101.047762", "lat": 12.733869, "lng": 101.047762, "status": "pending"}, {"id": "r86", "time": "13:39", "sender": "ป้าจุ๋ม", "detail": "69/90", "url": "https://maps.google.com/maps?q=12.751947,101.046569", "lat": 12.751947, "lng": 101.046569, "status": "pending"}, {"id": "r89", "time": "14:06", "sender": "Uthai", "detail": "4 ตำบล สำนักท้อน อำเภอบ้านฉาง ระยอง 21110 ประเทศไทย | 199/86 อุทัย เรืองคำ", "url": "https://maps.google.com/maps?q=12.761736,101.034449", "lat": 12.761736, "lng": 101.034449, "status": "pending"}, {"id": "r91", "time": "14:10", "sender": "fon naka", "detail": "2469 | 2469 71/63 และ 71/107 สุรีรัตน์ สวนทรัพย์", "url": "https://maps.google.com/maps?q=12.758371,101.046491", "lat": 12.758371, "lng": 101.046491, "status": "pending"}, {"id": "r93", "time": "14:21", "sender": "zadic", "detail": "2 ซอย 18/9 แยก 10, ตำบล สำนักท้อน อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.763986,101.035269", "lat": 12.763986, "lng": 101.035269, "status": "pending"}, {"id": "r98", "time": "14:56", "sender": "Aon supaporn", "detail": "", "url": "https://maps.google.com/maps?q=12.754127,101.053410", "lat": 12.754127, "lng": 101.05341, "status": "pending"}, {"id": "r100", "time": "16:21", "sender": "Sutipong", "detail": "P2PC+Q6H ตำบล สำนักท้อน อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.736557,101.020802", "lat": 12.736557, "lng": 101.020802, "status": "pending"}, {"id": "r103", "time": "07:23", "sender": "ya🍺🍺🍺", "detail": "บ้านทองดี@ถิ่นเมืองปักษ์ 199 116 ซอยจริงใจ10 ตำบล สำนักท้อน อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.754232,101.049494", "lat": 12.754232, "lng": 101.049494, "status": "pending"}, {"id": "r105", "time": "08:56", "sender": "เริงชัย", "detail": "", "url": "https://maps.google.com/maps?q=12.757961,101.050108", "lat": 12.757961, "lng": 101.050108, "status": "pending"}, {"id": "r127", "time": "09:54", "sender": "Patcharin", "detail": "", "url": "https://maps.google.com/maps?q=12.757704,101.050569", "lat": 12.757704, "lng": 101.050569, "status": "pending"}, {"id": "r131", "time": "10:28", "sender": "คุณย่า คุณยาย", "detail": "Q24R+54P เทศบาล 1/2 ตำบลบ้านฉาง อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.757227,101.042347", "lat": 12.757227, "lng": 101.042347, "status": "pending"}, {"id": "r137", "time": "10:45", "sender": "ทองจีน", "detail": "", "url": "https://maps.google.com/maps?q=12.757809,101.050528", "lat": 12.757809, "lng": 101.050528, "status": "pending"}, {"id": "r142", "time": "10:48", "sender": "ฉวี", "detail": "", "url": "https://maps.google.com/maps?q=12.752933,101.050363", "lat": 12.752933, "lng": 101.050363, "status": "pending"}, {"id": "r143", "time": "10:50", "sender": "ฉลวย สุขล้ำเลิศ", "detail": "", "url": "https://maps.google.com/maps?q=12.751438,101.050609", "lat": 12.751438, "lng": 101.050609, "status": "pending"}, {"id": "r144", "time": "10:51", "sender": "อ้อย", "detail": "Q29P+55 ตำบล สำนักท้อน อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.768004,101.035684", "lat": 12.768004, "lng": 101.035684, "status": "pending"}, {"id": "r149", "time": "10:54", "sender": "นรีรัตน์", "detail": "Q322+M7R ปีใหม่เจริญทรัพย์ ตำบลบ้านฉาง อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.750963,101.049332", "lat": 12.750963, "lng": 101.049332, "status": "pending"}, {"id": "r156", "time": "11:18", "sender": "แหม่ม แหม่ม", "detail": "Q29P+55 ตำบล สำนักท้อน อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.767955,101.036061", "lat": 12.767955, "lng": 101.036061, "status": "pending"}, {"id": "r160", "time": "11:24", "sender": "ช่างอ๊อด", "detail": "P2WX+JM ตำบลบ้านฉาง อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.744624,101.048155", "lat": 12.744624, "lng": 101.048155, "status": "pending"}, {"id": "r179", "time": "12:20", "sender": "Charoensri Thongbo", "detail": "", "url": "https://maps.google.com/maps?q=12.752727,101.049044", "lat": 12.752727, "lng": 101.049044, "status": "pending"}, {"id": "r181", "time": "12:22", "sender": "Charoensri Thongbo", "detail": "", "url": "https://maps.google.com/maps?q=12.750338,101.049250", "lat": 12.750338, "lng": 101.04925, "status": "pending"}, {"id": "r183", "time": "12:23", "sender": "Charoensri Thongbo", "detail": "", "url": "https://maps.google.com/maps?q=12.750022,101.049038", "lat": 12.750022, "lng": 101.049038, "status": "pending"}, {"id": "r188", "time": "13:00", "sender": "ปุ้ย ภัทธนิน", "detail": "", "url": "https://maps.google.com/maps?q=12.757280,101.046744", "lat": 12.75728, "lng": 101.046744, "status": "pending"}, {"id": "r227", "time": "13:46", "sender": "P. Prateep", "detail": "", "url": "https://maps.google.com/maps?q=12.752948,101.048670", "lat": 12.752948, "lng": 101.04867, "status": "pending"}, {"id": "r228", "time": "13:47", "sender": "เพ็ญ", "detail": "", "url": "https://maps.google.com/maps?q=12.758003,101.050351", "lat": 12.758003, "lng": 101.050351, "status": "pending"}, {"id": "r234", "time": "14:22", "sender": "วันเพ็ญ214", "detail": "199/37", "url": "https://maps.google.com/maps?q=12.751857,101.050066", "lat": 12.751857, "lng": 101.050066, "status": "pending"}, {"id": "r243", "time": "14:52", "sender": "จุฑามาศ", "detail": "", "url": "https://maps.google.com/maps?q=12.758202,101.053625", "lat": 12.758202, "lng": 101.053625, "status": "pending"}, {"id": "r245", "time": "17:35", "sender": "สัญชัย", "detail": "", "url": "https://maps.google.com/maps?q=12.757461,101.051218", "lat": 12.757461, "lng": 101.051218, "status": "pending"}, {"id": "r246", "time": "18:38", "sender": "Rattana 🍀", "detail": "12 ซอย เทศบาล 9 ตำบล สำนักท้อน อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.750651,101.036951", "lat": 12.750651, "lng": 101.036951, "status": "pending"}, {"id": "r249", "time": "19:19", "sender": "ชมภู ศรีสุข สำนักท้อน", "detail": "7 ถนน เทศบาล 6 ตำบล สำนักท้อน อำเภอบ้านฉาง ระยอง 21130 ประเทศไทย", "url": "https://maps.google.com/maps?q=12.761446,101.022931", "lat": 12.761446, "lng": 101.022931, "status": "pending"}, {"id": "r255", "time": "15:27", "sender": "Joy Nipa", "detail": "", "url": "https://maps.google.com/maps?q=12.757459,101.048842", "lat": 12.757459, "lng": 101.048842, "status": "pending"}, {"id": "r258", "time": "18:35", "sender": "สมควร คล้ายพันธุ์", "detail": "", "url": "https://maps.google.com/maps?q=12.758098,101.048343", "lat": 12.758098, "lng": 101.048343, "status": "pending"}];
-
-// ══════════════════════════════════════════
-//  STATE
-// ══════════════════════════════════════════
-let queue = [];
-let filter = 'all';
-const STORAGE_KEY = 'queue_chakhamak_v3';
-
-function init() {
-    const saved = (() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e) { return null; } })();
-    if (saved && saved.length > 0) {
-        queue = saved;
-        updateStatusBar(`โหลดจาก cache — <strong>${queue.length} พิกัด</strong> (รวมการอัพเดตล่าสุด)`);
-    } else {
-        queue = PRELOADED.map(r => ({ ...r, status: 'pending' }));
-        save();
-        updateStatusBar(`ข้อมูลเริ่มต้น — <strong>${queue.length} พิกัด</strong> จากแชทกลุ่ม <strong>เเผนที่ภาษีหมู่5เทศบาลชากหมาก</strong>`);
+    // ===== Helpers =====
+    function showToast(msg, bg = '#16a34a') {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.style.background = bg;
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; }, 2500);
+        setTimeout(() => t.remove(), 3000);
     }
-    render();
-}
 
-function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(queue)); } catch(e) {} }
-
-function updateStatusBar(html) {
-    document.getElementById('status-text').innerHTML = html;
-}
-
-// ══════════════════════════════════════════
-//  IMPORT / PARSER
-// ══════════════════════════════════════════
-function toggleImport() {
-    const dz = document.getElementById('drop-zone');
-    dz.classList.toggle('open');
-}
-
-function showProgress(msg) {
-    const el = document.getElementById('parse-progress');
-    document.getElementById('parse-msg').textContent = msg;
-    el.classList.add('show');
-}
-function hideProgress() { document.getElementById('parse-progress').classList.remove('show'); }
-
-const dropZone = document.getElementById('drop-zone');
-const fileInput = document.getElementById('file-input');
-dropZone.addEventListener('click', e => { if(e.target === fileInput) return; fileInput.click(); });
-fileInput.addEventListener('change', e => { if(e.target.files[0]) handleFile(e.target.files[0]); });
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => {
-    e.preventDefault(); dropZone.classList.remove('dragover');
-    if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-});
-
-function handleFile(file) {
-    if(!file.name.endsWith('.txt') && !file.type.includes('text')) {
-        toast('กรุณาเลือกไฟล์ .txt เท่านั้น', 'error'); return;
+    // ===== HTML escape helper =====
+    function esc(str) {
+        return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
-    showProgress('กำลังอ่านไฟล์...');
-    const reader = new FileReader();
-    reader.onload = e => {
-        setTimeout(() => {
-            showProgress('กำลังประมวลผลพิกัด...');
-            setTimeout(() => parseAndMerge(e.target.result, file.name), 50);
-        }, 50);
-    };
-    reader.readAsText(file, 'UTF-8');
-}
 
-function parseLineChat(text) {
-    const lines = text.replace(/\r\n/g, '\n').split('\n');
-    const mapRe = /(https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl\/maps|maps\.google\.com\/maps)[^\s\r\n]+)/i;
-    const coordRe = /q=([\d.]+),([\d.]+)/;
-    const timeRe = /^(\d{1,2}:\d{2})\s+/;
-    const dateRe = /^\d{4}\.\d{2}\.\d{2}/;
-    const skipKw = ['เข้าร่วมกลุ่ม','ออกจากกลุ่ม','เปลี่ยนชื่อกลุ่ม','สติกเกอร์','รูป','ยกเลิกข้อความ','เพิ่ม','line://','<a href','เข้ากลุ่ม','ถอดรหัส'];
+    function collectFormData() {
+        const data = {
+            orgType: document.getElementById('orgType').value,
+            orgName: document.getElementById('orgName').value,
+            province: document.getElementById('province').value,
+            reportMonth: document.getElementById('reportMonth').value,
 
-    // Build blocks
-    const blocks = [];
-    let i = 0;
-    while (i < lines.length) {
-        const line = lines[i].trim(); i++;
-        if (!line || dateRe.test(line)) continue;
-        const tm = line.match(timeRe);
-        if (tm) {
-            const timeVal = tm[1];
-            const rest = line.slice(tm[0].length).trimEnd();
-            const continuation = [];
-            while (i < lines.length) {
-                const nxt = lines[i].trim();
-                if (!nxt) { i++; continue; }
-                if (timeRe.test(nxt) || dateRe.test(nxt)) break;
-                i++; continuation.push(nxt);
-            }
-            const fullText = [rest, ...continuation].join('\n');
-            if (skipKw.some(k => fullText.includes(k))) continue;
-            // Extract sender: leading name-like words
-            const words = rest.split(' ');
-            const senderWords = [];
-            for (const w of words) {
-                if (!senderWords.length || (/^[\u0E00-\u0E7Fa-zA-Z\/\-_.@#☘️🌲💎🍺🍀✅❌]+$/.test(w) && senderWords.length < 6))
-                    senderWords.push(w);
-                else break;
-            }
-            const sender = senderWords.join(' ').trim();
-            const msgStart = words.slice(senderWords.length).join(' ').trim();
-            const contentLines = (msgStart ? [msgStart] : []).concat(continuation);
-            blocks.push({ timeVal, sender, lines: contentLines });
+            rows: []
+        };
+        const rows = document.getElementById('tableBody').children;
+        for (let row of rows) {
+            const inputs = row.querySelectorAll('input, textarea');
+            const rowData = {};
+            inputs.forEach(input => { if (input.dataset.field) rowData[input.dataset.field] = input.value; });
+            data.rows.push(rowData);
+        }
+        return data;
+    }
+
+    function applyFormData(data) {
+        document.getElementById('orgType').value = data.orgType || 'เทศบาล';
+        document.getElementById('orgName').value = data.orgName || '';
+        document.getElementById('province').value = data.province || '';
+        document.getElementById('reportMonth').value = data.reportMonth || '';
+
+        document.getElementById('tableBody').innerHTML = '';
+        if (data.rows && data.rows.length > 0) {
+            data.rows.forEach(rowData => {
+                // แปลง reg_date ทุก format ให้เป็น วว/ดด/ปปปป (พ.ศ.)
+                if (rowData.reg_date) {
+                    const d = rowData.reg_date.trim();
+                    // ISO: 2025-04-15 หรือ 2025 04 15
+                    if (/^\d{4}[-\s]\d{2}[-\s]\d{2}$/.test(d)) {
+                        rowData.reg_date = formatThaiDate(d.replace(/\s/g, '-'));
+                    }
+                    // หากยังไม่ match (เป็น format ไทยแล้ว หรือ format อื่น) ใช้ค่าเดิม
+                }
+                addRow(rowData);
+            });
+        }
+        generateTable();
+    }
+
+    function getDatasetKey() {
+        const org = document.getElementById('orgName').value.trim() || 'ไม่ระบุ';
+        const month = document.getElementById('reportMonth').value || 'ไม่ระบุ';
+        return 'pt13_' + org.replace(/\s+/g, '_') + '_' + month;
+    }
+
+    // ===== Sync print header (real-time) =====
+    function syncPrintHeader() {
+        document.getElementById('printOrgType').textContent = document.getElementById('orgType').value;
+        document.getElementById('printOrgName').textContent = ' ' + document.getElementById('orgName').value;
+        const prov = document.getElementById('province').value;
+        document.getElementById('printProvince').textContent = prov ? ' จังหวัด' + prov : '';
+
+        const monthValue = document.getElementById('reportMonth').value;
+        if (monthValue) {
+            const [year, month] = monthValue.split('-');
+            const thaiYear = parseInt(year) + 543;
+            const thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+            document.getElementById('printMonth').textContent = thaiMonths[parseInt(month)] + ' พ.ศ. ' + thaiYear;
         } else {
-            if (blocks.length) blocks[blocks.length-1].lines.push(line);
+            document.getElementById('printMonth').textContent = '';
         }
+
+
     }
 
-    // Extract map records
-    const records = [];
-    const seenUrls = new Set();
-    blocks.forEach((blk, idx) => {
-        const full = blk.lines.join('\n');
-        const mapM = full.match(mapRe);
-        if (!mapM) return;
-        const url = mapM[1];
-        if (seenUrls.has(url)) return;
-        seenUrls.add(url);
-        const coordM = url.match(coordRe);
-        if (!coordM) return; // skip shortlinks without coords
-        const lat = parseFloat(coordM[1]);
-        const lng = parseFloat(coordM[2]);
-        let detail = full.replace(mapRe, '')
-            .replace(/[A-Z0-9]{4}\+[A-Z0-9]{3,}\s+ตำบล\S+\s+อำเภอ[^|]+ระยอง\s+\d{5}\s+ประเทศไทย\s*/g, '')
-            .replace(/Unnamed Road,\s+ตำบล[^|]+ประเทศไทย\s*/g, '')
-            .replace(/ถนนที่ไม่มีชื่อ\s+ตำบล[^|]+ประเทศไทย\s*/g, '')
-            .replace(/\n/g, ' | ').replace(/\s*:\s*$/, '').replace(/^\s*\|\s*/, '').trim();
-        // Lookahead same sender
-        for (let j = idx+1; j < Math.min(idx+5, blocks.length); j++) {
-            const b2 = blocks[j];
-            if (b2.sender !== blk.sender) break;
-            const extra = b2.lines.join(' ').trim();
-            if (!extra || mapRe.test(extra)) break;
-            detail = (detail + ' | ' + extra).replace(/^\s*\|\s*/, '').trim();
+    // ===== Init =====
+    document.addEventListener('DOMContentLoaded', function() {
+        // โหลดข้อมูลก่อน (เพื่อไม่ให้ค่า reportMonth ถูกทับ)
+        loadData();
+
+        // ตั้งค่าเดือนปัจจุบันเป็น default เฉพาะเมื่อยังไม่มีค่า
+        if (!document.getElementById('reportMonth').value) {
+            const today = new Date();
+            document.getElementById('reportMonth').value = today.toISOString().slice(0, 7);
         }
-        records.push({
-            id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
-            time: blk.timeVal, sender: blk.sender, detail, url, lat, lng, status: 'pending'
+
+        // Sync print header ทันที
+        syncPrintHeader();
+
+        // ผูก event listener ให้ sync print header real-time ทุกครั้งที่ input เปลี่ยน
+        ['orgType','orgName','province','reportMonth'].forEach(id => {
+            document.getElementById(id).addEventListener('input', syncPrintHeader);
+            document.getElementById(id).addEventListener('change', syncPrintHeader);
         });
+
+        // Remove overlays
+        function rmOv() {
+            document.querySelectorAll('[class*="send"],[class*="Send"],[class*="console"],[class*="Console"]').forEach(el => {
+                if (el.textContent.includes('Send element') || el.textContent.includes('Send console') || el.textContent.includes('console error')) el.remove();
+            });
+        }
+        rmOv(); setInterval(rmOv, 500);
     });
 
-    // Dedup by approx coords
-    const out = [];
-    const seenCoords = [];
-    for (const r of records) {
-        if (!seenCoords.some(c => Math.abs(r.lat-c[0])<0.0001 && Math.abs(r.lng-c[1])<0.0001)) {
-            out.push(r);
-            seenCoords.push([r.lat, r.lng]);
+    // ===== Generate / Row =====
+    function generateTable() {
+        syncPrintHeader();
+        if (document.getElementById('tableBody').children.length === 0) addRow();
+    }
+
+    function addRow(data = {}) {
+        const tbody = document.getElementById('tableBody');
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-indigo-50/50 transition';
+        tr.innerHTML = `
+            <td class="border border-gray-200 px-2 py-2 text-center text-gray-500">${tbody.children.length + 1}</td>
+            <td class="border border-gray-200 px-1 py-1"><input type="text" class="w-full px-2 py-1 border-0 focus:bg-yellow-50" value="${esc(data.parcel_cod)}" data-field="parcel_cod"></td>
+            <td class="border border-gray-200 px-1 py-1"><textarea class="w-full px-2 py-1 border-0 focus:bg-yellow-50 resize-none auto-resize" data-field="owner">${esc(data.owner)}</textarea></td>
+            <td class="border border-gray-200 px-1 py-1"><textarea class="w-full px-2 py-1 border-0 focus:bg-yellow-50 resize-none auto-resize" data-field="adjustment">${esc(data.adjustment)}</textarea></td>
+            <td class="border border-gray-200 px-1 py-1 text-center"><input type="text" class="w-full px-1 py-1 border-0 text-center focus:bg-yellow-50" value="${esc(data.land) || '+1'}" data-field="land"></td>
+            <td class="border border-gray-200 px-1 py-1 text-center"><input type="text" class="w-full px-1 py-1 border-0 text-center focus:bg-yellow-50" value="${esc(data.building) || '-'}" data-field="building"></td>
+            <td class="border border-gray-200 px-1 py-1 text-center"><input type="text" class="w-full px-1 py-1 border-0 text-center focus:bg-yellow-50" value="${esc(data.trade) || '-'}" data-field="trade"></td>
+            <td class="border border-gray-200 px-1 py-1 text-center"><input type="text" class="w-full px-1 py-1 border-0 text-center focus:bg-yellow-50" value="${esc(data.sign) || '-'}" data-field="sign"></td>
+            <td class="border border-gray-200 px-1 py-1 text-center"><input type="text" class="w-full px-1 py-1 border-0 text-center focus:bg-yellow-50" value="${esc(data.taxpayer) || '-'}" data-field="taxpayer"></td>
+            <td class="border border-gray-200 px-1 py-1"><input type="text" class="w-full px-2 py-1 border-0 focus:bg-yellow-50" value="${esc(data.parcel_no)}" data-field="parcel_no"></td>
+            <td class="border border-gray-200 px-1 py-1"><input type="text" class="w-full px-2 py-1 border-0 focus:bg-yellow-50" value="${esc(data.receiver || document.getElementById('officerName').value)}" data-field="receiver"></td>
+            <td class="border border-gray-200 px-1 py-1"><input type="text" placeholder="วว/ดด/ปปปป" class="w-full px-2 py-1 border-0 focus:bg-yellow-50 text-center" value="${esc(data.reg_date)}" data-field="reg_date" onblur="if(this.value.match(/^\\d{4}[-\\s]\\d{2}[-\\s]\\d{2}$/)) this.value=formatThaiDate(this.value.replace(/\\s/g,'-'))"></td>
+            <td class="border border-gray-200 px-2 py-2 text-center no-print">
+                <button onclick="deleteRow(this)" class="text-gray-400 hover:text-red-500 transition" title="ลบแถว">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+        // Auto-resize all textareas in this row
+        tr.querySelectorAll('textarea.auto-resize').forEach(autoResizeTextarea);
+        updateRowNumbers();
+    }
+
+    function deleteRow(btn) {
+        if (confirm('ต้องการลบแถวนี้หรือไม่?')) {
+            btn.closest('tr').remove();
+            updateRowNumbers();
         }
     }
-    return out;
-}
 
-function parseAndMerge(text, filename) {
-    const newRecords = parseLineChat(text);
-    hideProgress();
-
-    if (newRecords.length === 0) {
-        toast('ไม่พบพิกัดแผนที่ในไฟล์นี้', 'error'); return;
+    function updateRowNumbers() {
+        const rows = document.getElementById('tableBody').children;
+        for (let i = 0; i < rows.length; i++) rows[i].children[0].textContent = i + 1;
+        document.getElementById('rowCountFooter').textContent = rows.length + ' รายการ';
     }
 
-    // Merge: add only records whose coords don't already exist in queue
-    let added = 0;
-    for (const r of newRecords) {
-        const dup = queue.some(q => Math.abs(q.lat-r.lat)<0.0001 && Math.abs(q.lng-r.lng)<0.0001);
-        if (!dup) { queue.push(r); added++; }
+    // ===== Save / Load =====
+    function saveData() {
+        const data = collectFormData();
+        localStorage.setItem('pt13Data', JSON.stringify(data));
+        if (data.orgName && data.reportMonth) {
+            localStorage.setItem(getDatasetKey(), JSON.stringify(data));
+            updateRegistry();
+        }
+        showToast('บันทึกข้อมูลเรียบร้อย', '#16a34a');
     }
 
-    save(); render();
-    document.getElementById('drop-zone').classList.remove('open');
+    function loadData() {
+        const saved = localStorage.getItem('pt13Data');
+        if (saved) applyFormData(JSON.parse(saved));
+        refreshDatasetList();
+    }
 
-    const skipped = newRecords.length - added;
-    let msg = `นำเข้าสำเร็จ — เพิ่ม ${added} พิกัดใหม่`;
-    if (skipped > 0) msg += ` (ข้าม ${skipped} ซ้ำ)`;
-    toast(msg, 'success');
-    updateStatusBar(`อัพเดตล่าสุดจาก <strong>${filename}</strong> — รวม <strong>${queue.length} พิกัด</strong> ในคิว`);
-}
+    // ===== Dataset Registry (JSON DB) =====
+    function getRegistry() { return JSON.parse(localStorage.getItem('pt13_registry') || '[]'); }
 
-// ══════════════════════════════════════════
-//  RENDER
-// ══════════════════════════════════════════
-function setFilter(v) {
-    filter = v;
-    ['all','pending','done'].forEach(k => {
-        document.getElementById('nav-'+k).classList.toggle('active', k===v);
-        document.getElementById('chip-'+k).classList.toggle('active', k===v);
+    function refreshDatasetList() {
+        const registry = getRegistry();
+        const container = document.getElementById('dsList');
+        const countEl = document.getElementById('dsCount');
+        countEl.textContent = registry.length;
+
+        if (registry.length === 0) {
+            container.innerHTML = '<p class="text-xs text-gray-400 text-center py-3">ยังไม่มีชุดข้อมูล — กดบันทึกเพื่อสร้างชุดแรก</p>';
+            return;
+        }
+
+        const currentKey = getDatasetKey();
+        container.innerHTML = registry.map(item => {
+            const isActive = item.key === currentKey;
+            const savedDate = item.savedAt ? new Date(item.savedAt).toLocaleString('th-TH', {dateStyle:'short',timeStyle:'short'}) : '';
+            return `<div class="ds-card${isActive ? ' active' : ''}" onclick="loadDataset('${item.key}')">
+                <div class="dot" style="background:${isActive ? '#4f46e5' : '#cbd5e1'}"></div>
+                <div class="info">
+                    <span class="font-medium text-gray-700">${item.label}</span>
+                    <span class="text-[11px] text-gray-400">${savedDate}</span>
+                </div>
+                <button class="del" onclick="event.stopPropagation();deleteDataset('${item.key}')" title="ลบชุดนี้">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>`;
+        }).join('');
+    }
+
+    function updateRegistry() {
+        const key = getDatasetKey();
+        const org = document.getElementById('orgName').value.trim() || 'ไม่ระบุหน่วยงาน';
+        const month = document.getElementById('reportMonth').value || 'ไม่ระบุเดือน';
+        const label = org + ' (' + month + ')';
+        let registry = getRegistry().filter(r => r.key !== key);
+        registry.unshift({ key, label, savedAt: new Date().toISOString() });
+        localStorage.setItem('pt13_registry', JSON.stringify(registry));
+        refreshDatasetList();
+    }
+
+    function loadDataset(key) {
+        const saved = localStorage.getItem(key);
+        if (!saved) { alert('ไม่พบชุดข้อมูลนี้'); return; }
+        applyFormData(JSON.parse(saved));
+        refreshDatasetList();
+        showToast('โหลดข้อมูลเรียบร้อย', '#4f46e5');
+    }
+
+    function deleteDataset(key) {
+        if (!confirm('ต้องการลบชุดข้อมูลนี้หรือไม่?')) return;
+        localStorage.removeItem(key);
+        let registry = getRegistry().filter(r => r.key !== key);
+        localStorage.setItem('pt13_registry', JSON.stringify(registry));
+        refreshDatasetList();
+        showToast('ลบชุดข้อมูลเรียบร้อย', '#e11d48');
+    }
+
+    function clearData() {
+        if (!confirm('ต้องการล้างข้อมูลทั้งหมดหรือไม่?\nข้อมูลจะถูกลบออกจากหน้าจอ (ชุดข้อมูลที่บันทึกไว้จะยังอยู่)')) return;
+        localStorage.removeItem('pt13Data');
+        document.getElementById('tableBody').innerHTML = '';
+        document.getElementById('orgName').value = '';
+        document.getElementById('province').value = '';
+
+        updateRowNumbers();
+        showToast('ล้างข้อมูลเรียบร้อย', '#dc2626');
+    }
+
+    // ===== CSV =====
+    function importCSV() { document.getElementById('csvFile').click(); }
+
+    function handleCSVFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) { parseCSV(e.target.result); };
+        reader.readAsText(file, 'UTF-8');
+        event.target.value = '';
+    }
+
+    function parseCSV(text) {
+        text = text.replace(/^\uFEFF/, '');
+        const lines = text.split('\n').filter(line => line.trim());
+        if (lines.length < 2) { alert('ไฟล์ CSV ไม่มีข้อมูล'); return; }
+
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        document.getElementById('tableBody').innerHTML = '';
+
+        function getVal(values, ...names) {
+            for (const name of names) { const idx = headers.indexOf(name); if (idx !== -1 && idx < values.length) return values[idx]; }
+            return '';
+        }
+
+        const isExportedFile = headers.includes('รหัสประจำแปลงที่ดิน');
+
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+            const rowData = {};
+            if (isExportedFile) {
+                rowData.parcel_cod = getVal(values, 'รหัสประจำแปลงที่ดิน');
+                rowData.owner = getVal(values, 'เจ้าของทรัพย์สิน');
+                rowData.adjustment = getVal(values, 'รายการปรับปรุง-รายการแก้ไข', 'รายการปรับปรุงรายการแก้ไข');
+                rowData.land = getVal(values, 'ที่ดิน') || '+';
+                rowData.building = getVal(values, 'โรงเรือน') || '-';
+                rowData.trade = getVal(values, 'การค้า') || '-';
+                rowData.sign = getVal(values, 'ป้าย') || '-';
+                rowData.taxpayer = getVal(values, 'ผู้ชำระภาษี') || '-';
+                rowData.parcel_no = getVal(values, 'หมายเหตุ');
+                rowData.receiver = getVal(values, 'ลงชื่อผู้รับข้อมูล');
+                rowData.reg_date = getVal(values, 'วัน เดือน ปี ที่ปรับข้อมูล', 'วัน  เดือน  ปี  ที่ปรับข้อมูล');
+            } else {
+                headers.forEach((header, idx) => {
+                    const value = values[idx] || '';
+                    if (header === 'parcel_cod') rowData.parcel_cod = value;
+                    if (header === 'title') rowData._title = value;
+                    if (header === 'fname') rowData._fname = value;
+                    if (header === 'lname') rowData._lname = value;
+                    if (header === 'reg_code') rowData._reg_code = value;
+                    if (header === 'reg_date') rowData.reg_date = value;
+                    if (header === 'parcel_no') rowData.parcel_no = value;
+                });
+                rowData.owner = [rowData._title, rowData._fname, rowData._lname].filter(Boolean).join(' ');
+                const regDate = rowData.reg_date ? formatThaiDate(rowData.reg_date) : '';
+                rowData.adjustment = [rowData._reg_code, 'ที่ดินตกหล่น', regDate].filter(Boolean).join(' ');
+                rowData.land = '+1'; rowData.building = '-'; rowData.trade = '-'; rowData.sign = '-'; rowData.taxpayer = '-';
+                rowData.receiver = '';
+            }
+            addRow(rowData);
+        }
+        showToast(`นำเข้าข้อมูลสำเร็จ ${lines.length - 1} รายการ`, '#2563eb');
+    }
+
+    function formatThaiDate(dateStr) {
+        try { const d = new Date(dateStr); return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()+543}`; }
+        catch { return dateStr; }
+    }
+
+    function exportCSV() {
+        let csv = '\uFEFF';
+        csv += 'ลำดับ,รหัสประจำแปลงที่ดิน,เจ้าของทรัพย์สิน,รายการปรับปรุง-รายการแก้ไข,ที่ดิน,โรงเรือน,การค้า,ป้าย,ผู้ชำระภาษี,หมายเหตุ,ลงชื่อผู้รับข้อมูล,วัน เดือน ปี ที่ปรับข้อมูล\n';
+        const rows = document.getElementById('tableBody').children;
+        for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
+            const c = [i+1, r.querySelector('[data-field="parcel_cod"]').value, r.querySelector('[data-field="owner"]').value, r.querySelector('[data-field="adjustment"]').value, r.querySelector('[data-field="land"]').value, r.querySelector('[data-field="building"]').value, r.querySelector('[data-field="trade"]').value, r.querySelector('[data-field="sign"]').value, r.querySelector('[data-field="taxpayer"]').value, r.querySelector('[data-field="parcel_no"]').value, r.querySelector('[data-field="receiver"]').value, r.querySelector('[data-field="reg_date"]').value];
+            csv += c.map(v => `"${v}"`).join(',') + '\n';
+        }
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `ผท13_${document.getElementById('reportMonth').value || 'export'}.csv`;
+        link.click();
+    }
+
+
+
+    // ===== Excel =====
+    function exportXLSX() {
+        const rows = document.getElementById('tableBody').children;
+        if (rows.length === 0) { alert('ไม่มีข้อมูลให้ส่งออก'); return; }
+        const data = [['ลำดับ','รหัสประจำแปลงที่ดิน','เจ้าของทรัพย์สิน','รายการปรับปรุง-รายการแก้ไข','ที่ดิน','โรงเรือน','การค้า','ป้าย','ผู้ชำระภาษี','หมายเหตุ','ลงชื่อผู้รับข้อมูล','วัน เดือน ปี ที่ปรับข้อมูล']];
+        for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
+            data.push([i+1, r.querySelector('[data-field="parcel_cod"]').value, r.querySelector('[data-field="owner"]').value, r.querySelector('[data-field="adjustment"]').value, r.querySelector('[data-field="land"]').value, r.querySelector('[data-field="building"]').value, r.querySelector('[data-field="trade"]').value, r.querySelector('[data-field="sign"]').value, r.querySelector('[data-field="taxpayer"]').value, r.querySelector('[data-field="parcel_no"]').value, r.querySelector('[data-field="receiver"]').value, r.querySelector('[data-field="reg_date"]').value]);
+        }
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{wch:6},{wch:18},{wch:22},{wch:28},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:12},{wch:18},{wch:18}];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'ผท13');
+        XLSX.writeFile(wb, `ผท13_${document.getElementById('reportMonth').value || 'export'}.xlsx`);
+    }
+
+    // ===== Auto-resize textarea =====
+    function autoResizeTextarea(el) {
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    }
+
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('auto-resize')) {
+            autoResizeTextarea(e.target);
+        }
     });
-    render();
-}
-function setChip(v) { setFilter(v); }
 
-function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-function render() {
-    const term = document.getElementById('search').value.toLowerCase();
-    const tbody = document.getElementById('rows');
-    tbody.innerHTML = '';
-
-    let tot=0, pen=0, dn=0;
-    queue.forEach(r => { tot++; r.status==='done' ? dn++ : pen++; });
-    document.getElementById('s-total').textContent  = tot;
-    document.getElementById('s-pending').textContent = pen;
-    document.getElementById('s-done').textContent    = dn;
-
-    const filtered = queue.filter(r => {
-        const ms = filter==='all' || r.status===filter;
-        const mt = !term || r.sender.toLowerCase().includes(term) ||
-                   r.detail.toLowerCase().includes(term) || r.time.includes(term);
-        return ms && mt;
+    // ===== Auto-save =====
+    document.addEventListener('change', function(e) {
+        if (e.target.closest('#tableBody') || e.target.closest('.bg-white')) {
+            clearTimeout(window.autoSaveTimeout);
+            window.autoSaveTimeout = setTimeout(saveData, 1000);
+        }
     });
-    document.getElementById('row-count').textContent = filtered.length + ' รายการ';
-
-    if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><i class="fas fa-inbox"></i>ไม่พบรายการที่ตรงกัน</div></td></tr>';
-        return;
-    }
-
-    filtered.forEach((r, i) => {
-        const tr = document.createElement('tr');
-        const coordText = r.lat ? r.lat.toFixed(5) + ',' + r.lng.toFixed(5) : '—';
-        const isDone = r.status === 'done';
-        tr.innerHTML =
-            `<td class="td-num">${String(i+1).padStart(2,'0')}</td>` +
-            `<td class="td-time">${esc(r.time)} น.</td>` +
-            `<td class="td-sender">${esc(r.sender)}</td>` +
-            `<td class="td-detail">${r.detail ? esc(r.detail) : '<span style="color:var(--text-faint)">—</span>'}</td>` +
-            `<td class="td-coord">${coordText}</td>` +
-            `<td><a href="${r.url}" target="_blank" class="btn-map"><i class="fas fa-map-marker-alt"></i> แผนที่</a></td>` +
-            `<td><span class="badge ${isDone?'badge-done':'badge-pending'}">${isDone?'สำรวจแล้ว':'รอดำเนินการ'}</span></td>` +
-            `<td><div class="action-group">` +
-            `<button class="icon-btn ${isDone?'icon-btn-undo':'icon-btn-check'}" onclick="toggle('${r.id}')" title="${isDone?'ย้อนสถานะ':'ทำเครื่องหมายสำรวจแล้ว'}"><i class="fas ${isDone?'fa-rotate-left':'fa-check'}"></i></button>` +
-            `<button class="icon-btn icon-btn-del" onclick="del('${r.id}')"><i class="fas fa-trash"></i></button>` +
-            `</div></td>`;
-        tbody.appendChild(tr);
-    });
-}
-
-// ══════════════════════════════════════════
-//  ACTIONS
-// ══════════════════════════════════════════
-function toggle(id) {
-    const r = queue.find(x => x.id===id);
-    if (r) { r.status = r.status==='done'?'pending':'done'; save(); render(); }
-}
-function del(id) {
-    if (confirm('ลบรายการนี้ออกจากคิวใช่หรือไม่?')) {
-        queue = queue.filter(x => x.id!==id); save(); render();
-    }
-}
-function clearDone() {
-    const n = queue.filter(x => x.status==='done').length;
-    if (!n) { toast('ยังไม่มีรายการสำรวจแล้ว','error'); return; }
-    if (confirm(`ลบรายการสำรวจแล้วทั้ง ${n} รายการ ใช่หรือไม่?`)) {
-        queue = queue.filter(x => x.status!=='done'); save(); render();
-        toast(`ลบแล้ว ${n} รายการ`, 'success');
-    }
-}
-function resetToPreloaded() {
-    if (!confirm('รีเซ็ตข้อมูลทั้งหมดกลับเป็นข้อมูลเริ่มต้น (53 พิกัด) ใช่หรือไม่?\nสถานะที่บันทึกไว้จะหายทั้งหมด')) return;
-    queue = PRELOADED.map(r => ({ ...r, status: 'pending' }));
-    save(); render();
-    updateStatusBar(`รีเซ็ตแล้ว — <strong>${queue.length} พิกัด</strong> จากข้อมูลเริ่มต้น`);
-    toast('รีเซ็ตข้อมูลแล้ว', 'success');
-}
-function exportCSV() {
-    if (!queue.length) { toast('ไม่มีข้อมูล','error'); return; }
-    const hdr = ['เวลา','ผู้ส่ง','รายละเอียด','lat','lng','URL แผนที่','สถานะ'];
-    const rows = queue.map(r =>
-        [r.time,r.sender,r.detail,r.lat,r.lng,r.url,r.status==='done'?'สำรวจแล้ว':'รอดำเนินการ']
-        .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`)
-    );
-    const csv = '\uFEFF' + [hdr,...rows].map(r => r.join(',')).join('\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
-    a.download = 'survey_chakhamak_m5_' + new Date().toLocaleDateString('th-TH').replace(/\//g,'-') + '.csv';
-    a.click();
-    toast('Export CSV สำเร็จ', 'success');
-}
-
-function toast(msg, type='') {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.className = 'toast show ' + type;
-    setTimeout(() => el.classList.remove('show'), 3000);
-}
-
-document.getElementById('search').addEventListener('input', render);
-init();
 </script>
 </body>
 </html>
